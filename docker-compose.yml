@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  calcom:
+    image: calcom/cal.com:latest
+    environment:
+      NEXTAUTH_SECRET: ${CALCOM_NEXTAUTH_SECRET:-devsecret}
+      CALENDSO_ENCRYPTION_KEY: ${CALCOM_ENCRYPTION_KEY:-devkey00000000000000000000000000}
+      DATABASE_URL: postgres://calcom:${CALCOM_DB_PASSWORD:-calcom}@postgres:5432/calcom
+    ports: ["3000:3000"]
+    depends_on: [postgres]
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: calcom
+      POSTGRES_USER: calcom
+      POSTGRES_PASSWORD: ${CALCOM_DB_PASSWORD:-calcom}
+    volumes: [calcom-db-data:/var/lib/postgresql/data]
+volumes:
+  calcom-db-data: {}

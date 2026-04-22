@@ -1,0 +1,276 @@
+# =============================================================================
+# Conversion Engine — Application Config Template
+# =============================================================================
+# Copy to `config.yaml` at repo root.
+# Secrets live in .env (see .env.example). This file holds tunables only.
+# Boot loads `config.yaml` then overlays `config.<CONVERGINE_ENV>.yaml`.
+# See __specs/18-configuration.md for loader semantics.
+# =============================================================================
+
+version: 1
+
+# -----------------------------------------------------------------------------
+# [1] LLM providers and models
+# -----------------------------------------------------------------------------
+llm:
+  providers:
+    openrouter:
+      base_url_env: OPENROUTER_BASE_URL
+      api_key_env: OPENROUTER_API_KEY
+      timeout_s: 60
+      max_retries: 3
+      concurrency: 2              # do not hammer the free tier
+    anthropic:
+      api_key_env: ANTHROPIC_API_KEY
+      timeout_s: 120
+    openai:
+      api_key_env: OPENAI_API_KEY
+      timeout_s: 120
+
+  models:
+    dev_tier:
+      primary:
+        provider: openrouter
+        name: qwen/qwen3-next-80b-a3b-instruct
+        max_output_tokens: 4096
+        prompt_cache: true
+      fallback:
+        provider: openrouter
+        name: deepseek/deepseek-chat-v3.2
+        max_output_tokens: 4096
+    eval_tier:
+      primary:
+        provider: anthropic
+        name: claude-sonnet-4-6
+        max_output_tokens: 8192
+      fallback:
+        provider: openai
+        name: gpt-5                # or the current GPT-5 class family
+        max_output_tokens: 8192
+
+  # Prices per 1k tokens — keep in sync with provider pricing for cost attribution.
+  prices:
+    qwen/qwen3-next-80b-a3b-instruct:    {input: 0.00014, output: 0.00060}
+    deepseek/deepseek-chat-v3.2:         {input: 0.00028, output: 0.00110}
+    claude-sonnet-4-6:                   {input: 0.00300, output: 0.01500}
+    gpt-5:                               {input: 0.00500, output: 0.01500}
+
+# -----------------------------------------------------------------------------
+# [2] Kill-switch (default unset)
+# -----------------------------------------------------------------------------
+killswitch:
+  enabled: false                  # DEFAULT UNSET — all outbound routes to sink
+  sink_email: "sink+convergine@staff-sandbox.tenacious.invalid"
+  sink_shortcode: "22222"
+  audit_log_path: "data/killswitch_audit.jsonl"
+  require_real_outbound_env: true # also requires CONVERGINE_ENABLE_REAL_OUTBOUND=1
+
+# -----------------------------------------------------------------------------
+# [3] Channels
+# -----------------------------------------------------------------------------
+channels:
+  hierarchy: [email, sms, voice]  # grading-fixed for Tenacious
+
+  email:
+    provider: resend              # resend | mailersend
+    from_domain_env: RESEND_FROM_DOMAIN
+    from_address_env: RESEND_FROM_ADDRESS
+    webhook_path: /webhooks/email/reply
+    send_jitter_ms: 500
+    list_unsubscribe_header: true
+    draft_marker_header: X-Convergine-Draft
+    trace_header: X-Convergine-Trace-Id
+    variant_header: X-Convergine-Variant
+    segment_header: X-Convergine-Segment
+    templates_dir: agent/channels/email/templates
+
+  sms:
+    provider: africastalking
+    body_max_chars: 160
+    allow_only_in_states: [QUALIFIED, SCHEDULING, SMS_SCHEDULING]
+    opt_in_required: true
+    stop_keywords: [STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT]
+    webhook_path: /webhooks/sms/inbound
+
+  voice:
+    enabled: false                # bonus only — flip when attempting
+    webhook_url_env: VOICE_RIG_WEBHOOK_URL
+    keyword_prefix_env: VOICE_RIG_KEYWORD_PREFIX
+    allow_only_in_states: [BOOKED]
+
+# -----------------------------------------------------------------------------
+# [4] CRM — HubSpot
+# -----------------------------------------------------------------------------
+crm:
+  hubspot:
+    mcp_url_env: HUBSPOT_MCP_URL
+    token_env: HUBSPOT_PRIVATE_APP_TOKEN
+    rate_limit_per_10s: 100
+    retry_on: [429, 500, 502, 503, 504]
+    custom_properties:
+      company:
+        - convergine_crunchbase_uuid
+        - convergine_icp_segment
+        - convergine_icp_mode
+        - convergine_icp_confidence
+        - convergine_ai_maturity_score
+        - convergine_ai_maturity_confidence
+        - convergine_enrichment_timestamp
+        - convergine_brief_url
+        - convergine_gap_brief_url
+      contact:
+        - convergine_preferred_channel
+        - convergine_synthetic
+      deal:
+        - convergine_segment
+        - convergine_thread_id
+
+# -----------------------------------------------------------------------------
+# [5] Calendar — Cal.com
+# -----------------------------------------------------------------------------
+calendar:
+  calcom:
+    base_url_env: CALCOM_BASE_URL
+    api_key_env: CALCOM_API_KEY
+    webhook_secret_env: CALCOM_WEBHOOK_SECRET
+    webhook_path: /webhooks/calcom
+    event_types:
+      segment_1_or_2_discovery:
+        slug: discovery-30
+        duration_min: 30
+        buffer_pre_min: 10
+        buffer_post_min: 10
+      segment_3_leadership:
+        slug: discovery-45-leadership
+        duration_min: 45
+        buffer_pre_min: 15
+        buffer_post_min: 15
+      segment_4_technical:
+        slug: discovery-60-technical
+        duration_min: 60
+        buffer_pre_min: 15
+        buffer_post_min: 15
+    working_hours_delivery_lead:
+      start_local: "08:00"
+      end_local:   "19:00"
+
+# -----------------------------------------------------------------------------
+# [6] Observability — Langfuse
+# -----------------------------------------------------------------------------
+observability:
+  langfuse:
+    host_env: LANGFUSE_HOST
+    public_key_env: LANGFUSE_PUBLIC_KEY
+    secret_key_env: LANGFUSE_SECRET_KEY
+    project_env: LANGFUSE_PROJECT
+    flush_interval_s: 5
+  local_jsonl_fallback: data/local_traces.jsonl
+  cost_pathology_threshold_usd_per_prospect: 0.20
+
+# -----------------------------------------------------------------------------
+# [7] Enrichment pipeline thresholds (see __specs/05)
+# -----------------------------------------------------------------------------
+enrichment:
+  funding_recency_days_max: 180
+  layoff_recency_days_max: 120
+  leadership_change_recency_days_max: 90
+  job_post_velocity_window_days: 60
+  aggressive_hiring:
+    min_open_roles: 5
+    min_ratio: 2.0
+  confidence_bands:
+    low_max_exclusive: 0.50
+    medium_max_exclusive: 0.75
+  brief_cache_ttl_h: 24
+  live_crawl_company_cap: 200    # per challenge rules
+  user_agent: "ConvergineResearchBot/0.1 (+mailto:research@convergine.invalid)"
+  respect_robots_txt: true
+
+# -----------------------------------------------------------------------------
+# [8] ICP classifier (see __specs/03)
+# -----------------------------------------------------------------------------
+icp:
+  confidence_threshold: 0.55
+  margin_threshold: 0.10
+  segment_4_ai_maturity_gate: 2
+  abstention_variant: exploratory
+  segments_file: agent/icp/segments.yaml
+
+# -----------------------------------------------------------------------------
+# [9] τ²-Bench harness (see __specs/11)
+# -----------------------------------------------------------------------------
+eval:
+  tau2_bench:
+    repo: https://github.com/sierra-research/tau2-bench
+    pinned_tag: "SET_AT_DAY_0"
+    domain_retail_version: "SET_AT_DAY_0"
+    domain_telecom_version: "SET_AT_DAY_0"
+    dev_slice_size: 30
+    held_out_slice_size: 20
+    trials_per_slice: 5
+    seed: 42
+    dev_tier_model: qwen/qwen3-next-80b-a3b-instruct
+    eval_tier_model: claude-sonnet-4-6
+    budget_dev_usd: 4.00
+    budget_eval_usd: 12.00
+
+# -----------------------------------------------------------------------------
+# [10] Act IV mechanism (see __specs/13)
+# -----------------------------------------------------------------------------
+method:
+  name: signal_confidence_aware_phrasing   # baseline | signal_confidence_aware_phrasing | bench_gated | icp_abstention | tone_preservation | channel_handoff
+  hyperparameters:
+    tone_regenerate_max_retries: 2
+    validator_model: dev_tier
+    confidence_thresholds:
+      low_max_exclusive: 0.50
+      medium_max_exclusive: 0.75
+  ablations:
+    - id: no_regeneration
+      overrides: {tone_regenerate_max_retries: 0}
+    - id: tighter_thresholds
+      overrides: {confidence_thresholds: {low_max_exclusive: 0.40, medium_max_exclusive: 0.65}}
+    - id: eval_tier_validator
+      overrides: {validator_model: eval_tier}
+  stat_test:
+    resamples: 10000
+    alpha: 0.05
+  automated_optimization_baseline: gepa    # gepa | autoagent
+
+# -----------------------------------------------------------------------------
+# [11] Market space (see __specs/15) — optional stretch
+# -----------------------------------------------------------------------------
+market_space:
+  enabled: false
+  weights:
+    funding_12mo: 0.40
+    hiring_velocity: 0.25
+    bench_match: 0.20
+    ai_readiness_signal: 0.15
+  hand_label_sample_size_min: 30
+  size_bands: ["1-10", "11-50", "51-100", "101-500", "501-2000", "2000+"]
+
+# -----------------------------------------------------------------------------
+# [12] Cost targets (referenced by memo and cost-quality grading)
+# -----------------------------------------------------------------------------
+costs:
+  cost_per_qualified_lead_usd_target: 5.00
+  cost_per_qualified_lead_usd_penalty_above: 8.00
+  trainee_weekly_budget_usd: 20.00
+
+# -----------------------------------------------------------------------------
+# [13] Style / tone
+# -----------------------------------------------------------------------------
+style:
+  style_guide_path: seed/style_guide.md
+  banned_phrases:
+    - "offshore"            # prefer "augmented engineering" per style guide
+    - "aggressive hiring"   # unless qualifies_for_aggressive_hiring_claim == true
+  max_gap_practices_in_cold_email: 1
+
+# -----------------------------------------------------------------------------
+# [14] Bench
+# -----------------------------------------------------------------------------
+bench:
+  summary_path: seed/bench_summary.yaml
+  hard_gate_send_on_mismatch: true
