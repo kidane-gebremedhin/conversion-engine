@@ -40,11 +40,10 @@ Each open decision has:
 
 ### O1 — Email provider
 
-- **Options:** Resend free tier (3 000/mo) | MailerSend free tier.
-- **Closes at:** End of **D0 pre-flight**.
-- **Closing fact:** Whichever provider's free-tier account provisions + sandbox-domain verifies + inbound-reply webhook loopback succeeds first.
-- **Default fallback:** Resend — more generous free tier and better documented webhook schema.
-- **Impact of choice:** `agent/channels/email/send.py` picks one client library; `config.yaml:channels.email.provider` switches between them. Swappable in < 30 min if we change our mind mid-week.
+- **Choice:** Resend free tier (3 000/mo).
+- **Closed at:** D0 pre-flight.
+- **Rationale:** Generous free tier and well-documented webhook schema; provisioned cleanly in sandbox.
+- **Impact of choice:** `agent/channels/email/send.py` uses the Resend client; `config.yaml:channels.email.provider` is pinned to `resend`.
 
 ### O2 — Dev-tier model (Days 1–4)
 
@@ -93,10 +92,10 @@ Each open decision has:
 
 ### O8 — HubSpot integration mode
 
-- **Options:** MCP server (`agent/integrations/hubspot_mcp.py`) | Direct REST calls.
-- **Closes at:** **D0 pre-flight / D2 Act II start**, whichever reveals issues first.
-- **Closing fact:** MCP server installs cleanly and upserts a test contact. If MCP misbehaves (undocumented in [__specs/08 §3](/home/kg/Projects/10Academy/conversion-engine/__specs/08-hubspot-integration.md)), we fall back to REST on the same interface.
-- **Default fallback:** MCP — preferred per the challenge stack table.
+- **Choice:** MCP via in-repo server (`agent/integrations/hubspot_mcp_server.py`), spawned as a stdio subprocess by `HubSpotClient`. Tools: `upsert_company`, `find_company_by_crunchbase_uuid`, `upsert_contact`, `create_deal`, `advance_deal_stage`, `log_event`.
+- **Closed at:** 2026-04-23, D0 pre-flight.
+- **Rationale:** HubSpot's official remote MCP server (`https://mcp.hubspot.com`) is OAuth 2.1 + PKCE only — unsuitable for a non-interactive backend. Community servers (`peakmojo/mcp-hubspot`, `lkm1developer/hubspot-mcp-server`) omit deals and custom objects, which [__specs/08](/home/kg/Projects/10Academy/conversion-engine/__specs/08-hubspot-integration.md) requires. A thin Python MCP server wrapping REST with the Private App token matches the spec verbs exactly, keeps auth simple, and puts MCP in the critical path without an OAuth flow.
+- **Fallbacks:** `HUBSPOT_CLIENT_MODE=rest` skips the MCP hop and calls REST directly on the same interface. `HUBSPOT_CLIENT_MODE=local` writes JSON fixtures for no-token dev. Auto-default is MCP when the token is set, local otherwise.
 
 ---
 

@@ -1,0 +1,7 @@
+[
+  {"company_domain": "acme.ai", "title": "Senior Backend Engineer", "posted_at": "2026-02-01", "role_category": "engineering"},
+  {"company_domain": "acme.ai", "title": "Frontend Engineer", "posted_at": "2026-01-28", "role_category": "engineering"},
+  {"company_domain": "acme.ai", "title": "Data Engineer", "posted_at": "2026-01-15", "role_category": "data"},
+  {"company_domain": "acme.ai", "title": "ML Engineer", "posted_at": "2026-01-10", "role_category": "ml"},
+  {"company_domain": "acme.ai", "title": "GTM — SDR", "posted_at": "2026-01-05", "role_category": "gtm"}
+]

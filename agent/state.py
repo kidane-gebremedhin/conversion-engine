@@ -5,7 +5,7 @@ arrive in later acts.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date as _date, datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 from uuid import UUID, uuid4
@@ -49,12 +49,12 @@ class CrunchbaseRecord(BaseModel):
     country: str | None = None
     region: str | None = None
     industries: list[str] = Field(default_factory=list)
-    founded_on: date | None = None
+    founded_on: _date | None = None
     employee_count_range: str | None = None
     total_funding_usd: int | None = None
     last_funding_type: str | None = None
     last_funding_amount_usd: int | None = None
-    last_funding_date: date | None = None
+    last_funding_date: _date | None = None
     founders: list[str] = Field(default_factory=list)
     ceo: str | None = None
     linkedin_url: str | None = None
@@ -66,7 +66,7 @@ class Prospect(BaseModel):
     """A synthetic prospect — Crunchbase firmographics + fabricated contact."""
 
     crunchbase: CrunchbaseRecord
-    contact_email: EmailStr
+    contact_email: str
     contact_first: str
     contact_last: str
     contact_role: str
@@ -90,7 +90,7 @@ class Prospect(BaseModel):
 class FundingSignal(BaseModel):
     latest_round: str | None = None
     amount_usd: int | None = None
-    date: date | None = None
+    date: _date | None = None
     recency_days: int | None = None
     confidence: float = 0.0
     evidence: list[dict[str, str]] = Field(default_factory=list)
@@ -108,7 +108,7 @@ class VelocitySignal(BaseModel):
 
 class LayoffSignal(BaseModel):
     detected: bool = False
-    date: date | None = None
+    date: _date | None = None
     headcount: int | None = None
     percentage: float | None = None
     recency_days: int | None = None
@@ -217,7 +217,7 @@ class EmailReplyIntent(BaseModel):
 class ThreadState(BaseModel):
     thread_id: UUID = Field(default_factory=uuid4)
     prospect_uuid: str
-    contact_email: EmailStr
+    contact_email: str
     stage: Stage = Stage.COLD
     segment: int | None = None
     icp_mode: Literal["confident", "abstain"] = "abstain"

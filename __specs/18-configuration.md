@@ -28,7 +28,6 @@ class Secrets(BaseSettings):
 
     # Email
     resend_api_key: SecretStr | None = None
-    mailersend_api_key: SecretStr | None = None
     resend_webhook_secret: SecretStr | None = None
 
     # SMS

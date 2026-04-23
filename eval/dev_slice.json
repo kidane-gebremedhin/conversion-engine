@@ -1,0 +1,15 @@
+{
+  "slice_name": "dev",
+  "domain": "retail",
+  "source": "sierra-research/tau2-bench",
+  "pinned_tag": "v0.1-interim-local-mock",
+  "size": 30,
+  "tasks": [
+    "retail_task_001", "retail_task_002", "retail_task_003", "retail_task_004", "retail_task_005",
+    "retail_task_006", "retail_task_007", "retail_task_008", "retail_task_009", "retail_task_010",
+    "retail_task_011", "retail_task_012", "retail_task_013", "retail_task_014", "retail_task_015",
+    "retail_task_016", "retail_task_017", "retail_task_018", "retail_task_019", "retail_task_020",
+    "retail_task_021", "retail_task_022", "retail_task_023", "retail_task_024", "retail_task_025",
+    "retail_task_026", "retail_task_027", "retail_task_028", "retail_task_029", "retail_task_030"
+  ]
+}

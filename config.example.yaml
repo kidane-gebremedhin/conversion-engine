@@ -72,7 +72,7 @@ channels:
   hierarchy: [email, sms, voice]  # grading-fixed for Tenacious
 
   email:
-    provider: resend              # resend | mailersend
+    provider: resend
     from_domain_env: RESEND_FROM_DOMAIN
     from_address_env: RESEND_FROM_ADDRESS
     webhook_path: /webhooks/email/reply

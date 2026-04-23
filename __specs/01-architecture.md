@@ -57,7 +57,7 @@
 
 | Layer | Primary choice | Fallback | Budget |
 |-------|----------------|----------|--------|
-| Email (primary) | Resend free 3 000/mo | MailerSend free | $0 |
+| Email (primary) | Resend free 3 000/mo | — | $0 |
 | SMS (secondary) | Africa's Talking sandbox | — | $0 |
 | Voice (bonus) | Tenacious Shared Voice Rig | — | program-hosted |
 | CRM | HubSpot Developer Sandbox (MCP, 100 req/10 s) | — | $0 |

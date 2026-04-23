@@ -8,9 +8,9 @@ We noticed your {{ signals.funding.latest_round }} — ${{ "%.0f"|format(signals
 We noticed your recent round.
 {%- endif %}
 
-{% if signals.velocity.qualifies_for_aggressive_hiring_claim -%}
-Your open-role count ({{ signals.velocity.open_roles_now }}, {{ signals.velocity.ratio }}× where it was 60 days ago) puts you in the upper band for hiring pace in {{ brief.company.industries[0] }}.
-{%- elif signals.velocity.confidence >= 0.5 -%}
+{% if signals.job_post_velocity.qualifies_for_aggressive_hiring_claim -%}
+Your open-role count ({{ signals.job_post_velocity.open_roles_now }}, {{ signals.job_post_velocity.ratio }}× where it was 60 days ago) puts you in the upper band for hiring pace in {{ brief.company.industries[0] }}.
+{%- elif signals.job_post_velocity.confidence >= 0.5 -%}
 Hiring at {{ brief.company.name }} has picked up over the last 60 days.
 {%- endif %}
 

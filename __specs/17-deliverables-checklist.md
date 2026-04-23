@@ -20,7 +20,7 @@
 ### A.2 `agent/` directory
 
 - [ ] All agent source files
-- [ ] Email handler (Resend **or** MailerSend integration) — [07 §2](07-channels.md)
+- [ ] Email handler (Resend integration) — [07 §2](07-channels.md)
 - [ ] SMS handler (Africa's Talking for warm-lead scheduling) — [07 §3](07-channels.md)
 - [ ] HubSpot MCP integration — [08](08-hubspot-integration.md)
 - [ ] Cal.com booking flow — [09](09-calendar-booking.md)
@@ -46,7 +46,7 @@ Public Google Drive link. Required content:
 
 - [ ] Architecture overview and key design decisions (see [01](01-architecture.md))
 - [ ] Production stack status — all verified running:
-  - Resend **or** MailerSend (email, primary channel)
+  - Resend (email, primary channel)
   - Africa's Talking (SMS, secondary for warm-lead scheduling)
   - HubSpot Developer Sandbox
   - Cal.com

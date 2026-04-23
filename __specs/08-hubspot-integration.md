@@ -4,7 +4,9 @@
 
 ## 1. Provider
 
-**HubSpot Developer Sandbox** — free. Accessed over the HubSpot MCP server. Rate limit 100 API calls per 10 s.
+**HubSpot Developer Sandbox** — free. Rate limit 100 API calls per 10 s.
+
+The agent talks to HubSpot over an **in-repo MCP server** (`agent/integrations/hubspot_mcp_server.py`, stdio transport) that wraps the Private-App REST API. The agent process spawns this server as a subprocess; the client (`HubSpotClient`) speaks MCP over stdio to it. HubSpot's official remote MCP server (`https://mcp.hubspot.com`) is not used because it requires OAuth 2.1 + PKCE (user-interactive), and no community server covers the `Deal` + `Conversation Event` surface we need. See [__plans/00-decisions.md O8](../__plans/00-decisions.md).
 
 ## 2. Object model
 
@@ -70,28 +72,40 @@ Append-only log. One row per `agent.integrations.hubspot_mcp.log_event` call.
 | `draft` | boolean, mirrors `X-Convergine-Draft` header |
 | `created_at` | ISO8601 |
 
-## 3. MCP client
+## 3. MCP server + client
 
+### Server — `agent/integrations/hubspot_mcp_server.py`
+FastMCP server, stdio transport. Exposes the following tools (names are MCP-callable verbatim):
+
+| Tool | Purpose |
+|------|---------|
+| `upsert_company` | Create or update a Company keyed by `convergine_crunchbase_uuid`. |
+| `find_company_by_crunchbase_uuid` | Return the existing HubSpot company id or null. |
+| `upsert_contact` | Create or update a Contact keyed by email; associate to `company_id`. |
+| `create_deal` | Create a Deal and associate it to the given company + contact. |
+| `advance_deal_stage` | Update the `dealstage` property on an existing deal. |
+| `log_event` | Append a Conversation Event record (custom object); idempotent on `event_id`. |
+
+All tools read `HUBSPOT_PRIVATE_APP_TOKEN` from env. The Conversation Event object type is `HUBSPOT_CONVERSATION_EVENT_OBJECT_TYPE` (default `convergine_conversation_event`) and is provisioned by `scripts/hubspot_bootstrap.py`.
+
+Run standalone: `python -m agent.integrations.hubspot_mcp_server` (stdio) or `--http` for Streamable HTTP on `:4000`.
+
+### Client — `agent/integrations/hubspot_mcp.py`
 ```python
-# agent/integrations/hubspot_mcp.py
-
 class HubSpotClient:
-    def __init__(self, mcp_url: str, token: str): ...
+    def __init__(self, *, mcp_url: str | None = None, token: str | None = None): ...
+    # mode = mcp | rest | local  (auto: mcp if token else local; override via HUBSPOT_CLIENT_MODE)
 
-    # companies
-    def upsert_company(self, c: CompanyUpsert) -> str: ...         # returns company_id
+    def upsert_company(self, c: CompanyUpsert) -> str: ...
     def find_company_by_crunchbase_uuid(self, uuid: str) -> str | None: ...
-
-    # contacts
     def upsert_contact(self, contact: ContactUpsert) -> str: ...
-
-    # deals
     def create_deal(self, deal: DealCreate) -> str: ...
     def advance_deal_stage(self, deal_id: str, stage: str) -> None: ...
-
-    # events
-    def log_event(self, ev: ConversationEvent) -> None: ...         # idempotent on event_id
+    def log_event(self, ev: ConversationEvent) -> None: ...   # idempotent on event_id
+    def close(self) -> None: ...                              # shuts down MCP subprocess
 ```
+
+In `mcp` mode the client spawns the server as a subprocess and maintains a persistent MCP session over stdio (background asyncio loop in a daemon thread). `rest` mode calls `hubspot_rest.py` functions directly. `local` mode writes JSON under `data/hubspot_local/`.
 
 Wrap every call in:
 - Exponential back-off (max 3 retries) for 429s.

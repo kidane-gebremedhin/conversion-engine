@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "conversion-engine"
-version = "0.1.0-interim"
+version = "0.1.0a0"
 description = "Tenacious Consulting outbound conversion agent (interim submission)"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,7 +18,11 @@ dependencies = [
     "numpy>=1.26",
     "python-dateutil>=2.9",
     "email-validator>=2.1",
+    "mcp>=1.0",
 ]
+
+[project.scripts]
+convergine-hubspot-mcp = "agent.integrations.hubspot_mcp_server:main"
 
 [project.optional-dependencies]
 live = ["langfuse>=2.0", "resend>=0.7", "playwright>=1.42"]

@@ -47,7 +47,7 @@ conversion-engine/
 │   │
 │   ├── channels/
 │   │   ├── email/
-│   │   │   ├── send.py            # Resend / MailerSend client
+│   │   │   ├── send.py            # Resend client
 │   │   │   ├── webhook.py         # FastAPI inbound reply handler
 │   │   │   └── templates/         # jinja2 templates; draft-marked metadata
 │   │   ├── sms/

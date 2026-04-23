@@ -16,7 +16,6 @@
 
 ### Provider
 **Resend** (free tier, 3 000 emails/month, no credit card required).
-Fallback: **MailerSend** free tier.
 
 ### Outbound path
 ```

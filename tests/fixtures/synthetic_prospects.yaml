@@ -1,0 +1,68 @@
+# Synthetic prospects for COLD → BOOKED e2e demo.
+# All contact emails are @sink.convergine.local — synthetic by construction.
+prospects:
+  - alias: fixture-seg1-strong-signals
+    crunchbase_uuid: cb-seg1-acme
+    contact_email: cto@sink.convergine.local
+    contact_first: Ada
+    contact_last: Doe
+    contact_role: CTO
+    contact_timezone: America/New_York
+    preferred_channel: email
+    replies:
+      interested: |
+        Thanks — Thursday 2pm works. Please send a calendar link.
+      off_topic: |
+        Interesting — how did you find us?
+      pricing: |
+        What's the price for 10 Go engineers?
+      unsubscribe: |
+        Please remove me from this list.
+
+  - alias: fixture-seg2-layoff
+    crunchbase_uuid: cb-seg2-omni
+    contact_email: vpeng@sink.convergine.local
+    contact_first: Jordan
+    contact_last: Lee
+    contact_role: VP Engineering
+    contact_timezone: America/Chicago
+    preferred_channel: email
+    replies:
+      interested: |
+        Let's talk — reply with 2 slots.
+
+  - alias: fixture-seg3-new-cto
+    crunchbase_uuid: cb-seg3-echo
+    contact_email: cto-new@sink.convergine.local
+    contact_first: Sam
+    contact_last: Patel
+    contact_role: CTO
+    contact_timezone: America/Los_Angeles
+    preferred_channel: email
+    replies:
+      interested: |
+        Open to a short call — next week works.
+
+  - alias: fixture-seg4-build-signal
+    crunchbase_uuid: cb-seg4-nova
+    contact_email: headai@sink.convergine.local
+    contact_first: Priya
+    contact_last: Rao
+    contact_role: Head of AI
+    contact_timezone: America/Los_Angeles
+    preferred_channel: email
+    replies:
+      interested: |
+        Curious — please share a 2-slot calendar.
+
+  - alias: fixture-abstain-quiet
+    crunchbase_uuid: cb-abstain-quiet
+    contact_email: founder@sink.convergine.local
+    contact_first: Alex
+    contact_last: Kim
+    contact_role: CEO
+    contact_timezone: America/New_York
+    preferred_channel: email
+    replies:
+      interested: |
+        Sure, tell me more.

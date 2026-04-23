@@ -35,7 +35,7 @@ Calendar- and file-level execution plan for building the system defined under [`
 - [ ] `agent/requirements.txt` (or `pyproject.toml`)
 - [ ] `eval/` — τ²-Bench harness + `score_log.json` + `trace_log.jsonl`
 - [ ] `eval/baseline.md` ≤ 400 words
-- [ ] Resend / MailerSend verified running (email)
+- [ ] Resend verified running (email)
 - [ ] Africa's Talking sandbox verified running (SMS warm-lead)
 - [ ] HubSpot Developer Sandbox verified running
 - [ ] Cal.com verified running (`docker compose`)

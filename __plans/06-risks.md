@@ -147,7 +147,7 @@
 **Trigger metric:** Cumulative D0 wall-clock hours when one service is still unprovisioned.
 
 **Thresholds:**
-- > 5 h total on D0: invoke fallback per-service (MailerSend for email, REST for HubSpot, local Langfuse via `langfuse/langfuse-docker`, ignore Africa's Talking and mark SMS as stretch).
+- > 5 h total on D0: invoke fallback per-service (REST for HubSpot, local Langfuse via `langfuse/langfuse-docker`, ignore Africa's Talking and mark SMS as stretch).
 - > 6 h: defer Langfuse cloud; use local JSONL fallback (`data/local_traces.jsonl`) for the week; pay the integration cost on D7 if time.
 
 **Mitigation owner:** [01-d0-to-d3-interim-path.md](01-d0-to-d3-interim-path.md) §D0.1 + [00-decisions.md](00-decisions.md) §2 (O1, O8).

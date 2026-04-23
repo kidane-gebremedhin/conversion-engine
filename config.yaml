@@ -72,7 +72,7 @@ channels:
   hierarchy: [email, sms, voice]  # grading-fixed for Tenacious
 
   email:
-    provider: resend              # resend | mailersend
+    provider: resend
     from_domain_env: RESEND_FROM_DOMAIN
     from_address_env: RESEND_FROM_ADDRESS
     webhook_path: /webhooks/email/reply
@@ -103,8 +103,11 @@ channels:
 # -----------------------------------------------------------------------------
 crm:
   hubspot:
-    mcp_url_env: HUBSPOT_MCP_URL
+    client_mode_env: HUBSPOT_CLIENT_MODE          # mcp | rest | local; blank = auto
+    mcp_url_env: HUBSPOT_MCP_URL                  # only used when server runs --http
     token_env: HUBSPOT_PRIVATE_APP_TOKEN
+    conversation_event_object_type_env: HUBSPOT_CONVERSATION_EVENT_OBJECT_TYPE
+    mcp_server_command: "python -m agent.integrations.hubspot_mcp_server"
     rate_limit_per_10s: 100
     retry_on: [429, 500, 502, 503, 504]
     custom_properties:
@@ -124,6 +127,13 @@ crm:
       deal:
         - convergine_segment
         - convergine_thread_id
+      conversation_event:
+        - convergine_event_id
+        - convergine_event_type
+        - convergine_channel
+        - convergine_trace_id
+        - convergine_payload_json
+        - convergine_draft
 
 # -----------------------------------------------------------------------------
 # [5] Calendar — Cal.com

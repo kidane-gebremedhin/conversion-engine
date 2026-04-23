@@ -38,7 +38,7 @@ State machine: `COLD → NURTURE_{1,2,3} → QUALIFIED → SCHEDULING → BOOKED
 
 ```
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e .                          # core deps; add '[live]' for Playwright + Resend SDK + Langfuse
 cp .env.example .env                      # fill in keys or leave blank for mock mode
 cp config.example.yaml config.yaml        # (already copied on first clone)
 make bootstrap                            # seed synthetic prospects + fixture state
@@ -47,7 +47,146 @@ make health                               # sanity check
 
 Offline/mock mode is the default. The mock LLM client is deterministic (seeded) and drives all prompts without API keys. Set `CONVERGINE_LLM_MODE=live` + `OPENROUTER_API_KEY=...` to switch to real calls.
 
-### Interim reproduction
+## Day-0 Pre-flight (external services)
+
+Each step below closes one row of [`__plans/01-d0-to-d3-interim-path.md`](__plans/01-d0-to-d3-interim-path.md) §D0.1. Most are free-tier sandboxes.
+
+### 1. Email — Resend
+
+Decision locked on Resend (O1 in [`__plans/00-decisions.md`](__plans/00-decisions.md)).
+
+1. Sign up at [resend.com](https://resend.com) (free tier: 3 000 emails/month, no credit card).
+2. Verify a sandbox domain (or use the onboarding `onresend.dev` sender for smoke tests).
+3. Copy the API key into `.env`:
+   ```
+   RESEND_API_KEY=re_xxx…
+   RESEND_FROM_DOMAIN=convergine-sandbox.example.com
+   RESEND_FROM_ADDRESS=outbound@convergine-sandbox.example.com
+   RESEND_WEBHOOK_SECRET=whsec_xxx…
+   ```
+4. Register an **inbound-reply webhook** in the Resend dashboard pointing to:
+   ```
+   {PUBLIC_BASE_URL}/webhooks/email/reply
+   ```
+   Handler: [`agent/server.py:31`](agent/server.py#L31) → [`agent/channels/email/webhook.py`](agent/channels/email/webhook.py). For local dev, tunnel with `ngrok http 8000` or equivalent, and use the ngrok URL as `PUBLIC_BASE_URL`.
+5. Verify: send a test email to yourself and confirm the webhook POSTs with a valid signature.
+
+### 2. CRM — HubSpot Developer Sandbox (via in-repo MCP server)
+
+Decision locked on an in-repo MCP server that wraps Private-App REST (O8). The agent spawns [`agent/integrations/hubspot_mcp_server.py`](agent/integrations/hubspot_mcp_server.py) as a subprocess and speaks stdio MCP to it.
+
+1. Create a HubSpot developer account at [developers.hubspot.com](https://developers.hubspot.com).
+2. Inside the developer dashboard, create a **Developer Test Account** (the sandbox).
+3. In that sandbox: Settings → Integrations → Private Apps → **Create private app**. Grant scopes:
+   - `crm.objects.companies.read` / `.write`
+   - `crm.objects.contacts.read` / `.write`
+   - `crm.objects.deals.read` / `.write`
+   - `crm.schemas.companies.read` / `.write`, same for `contacts` and `deals`
+   - `crm.schemas.custom.read` / `.write` + `crm.objects.custom.read` / `.write` (Conversation Event object)
+4. Copy the access token into `.env`:
+   ```
+   HUBSPOT_PRIVATE_APP_TOKEN=pat-na1-xxx…
+   # Optional overrides; auto-detect is fine:
+   # HUBSPOT_CLIENT_MODE=mcp            # mcp | rest | local
+   # HUBSPOT_MCP_URL=http://localhost:4000
+   # HUBSPOT_CONVERSATION_EVENT_OBJECT_TYPE=convergine_conversation_event
+   ```
+5. Provision the sandbox schema (custom properties + custom object; idempotent):
+   ```
+   python -m scripts.hubspot_bootstrap
+   ```
+6. Run the D0 smoke test — spawns the MCP server and round-trips a test contact:
+   ```
+   python -m scripts.hubspot_smoke
+   ```
+   Success prints `ok — contact_id=<id>`. The smoke test asserts `mode=mcp`.
+
+**Run the MCP server standalone (optional):**
+```
+python -m agent.integrations.hubspot_mcp_server            # stdio
+python -m agent.integrations.hubspot_mcp_server --http     # Streamable HTTP on :4000
+```
+
+### 3. SMS — Africa's Talking sandbox
+
+1. Sign up at [africastalking.com](https://africastalking.com), use the **sandbox** app (free).
+2. Claim a virtual shortcode + keyword prefix in the sandbox simulator.
+3. Set:
+   ```
+   AFRICASTALKING_USERNAME=sandbox
+   AFRICASTALKING_API_KEY=atsk_xxx…
+   AFRICASTALKING_SHORTCODE=22222
+   AFRICASTALKING_WEBHOOK_SECRET=…
+   ```
+4. Register the inbound webhook → `{PUBLIC_BASE_URL}/webhooks/sms/inbound` ([`agent/server.py:38`](agent/server.py#L38)).
+5. Verify: send a test SMS from the sandbox simulator and watch the webhook hit.
+
+### 4. Calendar — Cal.com (self-hosted)
+
+1. Start Docker (if not already): `sudo systemctl start docker`.
+2. Bring up Cal.com + its Postgres:
+   ```
+   docker compose up -d
+   docker compose logs -f calcom      # first boot runs Prisma migrations (~30–90 s)
+   ```
+3. Verify:
+   ```
+   curl -s http://localhost:3000 | head -c 200
+   ```
+4. Complete the web-UI onboarding at <http://localhost:3000> (admin user, 3 event types: `discovery-30`, `demo-45`, `followup-15`).
+5. Generate an API key from Cal.com settings, then set:
+   ```
+   CALCOM_BASE_URL=http://localhost:3000
+   CALCOM_API_KEY=cal_live_xxx…
+   CALCOM_WEBHOOK_SECRET=…
+   ```
+6. Register the webhook → `{PUBLIC_BASE_URL}/webhooks/calcom` ([`agent/server.py:44`](agent/server.py#L44)).
+
+### 5. Signal pipeline — Playwright
+
+1. Install live-extras + the chromium browser binary:
+   ```
+   pip install -e '.[live]'
+   playwright install chromium
+   ```
+2. Fetch one public job listing to prove the stack ([`scripts/fetch_job_sample.py`](scripts/fetch_job_sample.py)):
+   ```
+   python -m scripts.fetch_job_sample                         # defaults: Stripe's Greenhouse board
+   python -m scripts.fetch_job_sample --company vercel        # any public Greenhouse slug
+   python -m scripts.fetch_job_sample --url https://…         # arbitrary URL
+   ```
+   Output: `data/jobposts_samples/<slug>_<timestamp>.json` matching the `JobPost` schema in [`agent/enrichment/jobposts.py:26`](agent/enrichment/jobposts.py#L26).
+
+### 6. Observability — Langfuse
+
+1. Create a cloud project at [cloud.langfuse.com](https://cloud.langfuse.com) (free tier).
+2. Generate public + secret keys; set:
+   ```
+   LANGFUSE_HOST=https://cloud.langfuse.com
+   LANGFUSE_PUBLIC_KEY=pk-lf-xxx…
+   LANGFUSE_SECRET_KEY=sk-lf-xxx…
+   LANGFUSE_PROJECT=convergine-local
+   ```
+3. Verify one test trace appears in the Langfuse UI after `make health`.
+
+### 7. LLM — OpenRouter
+
+1. Sign up at [openrouter.ai](https://openrouter.ai), generate an API key.
+2. Set:
+   ```
+   OPENROUTER_API_KEY=sk-or-v1-xxx…
+   CONVERGINE_LLM_MODE=live
+   ```
+3. Smoke: `python -m agent.main --healthcheck` — cost captured on Langfuse span.
+
+### 8. Data sources — seed datasets
+
+1. Crunchbase ODM sample — drop the 1 001-record JSON under `data/crunchbase_odm/companies.json`. Source: `luminati-io/Crunchbase-dataset-samples`.
+2. Layoffs snapshot — `data/layoffs_fyi/layoffs.csv`.
+3. Job-posts snapshot — `data/jobposts_snapshot/<domain>/now.json` + `prior.json` for the early-April 2026 window.
+4. τ²-Bench — `git clone sierra-research/tau2-bench` and pin the tag that matches `config.yaml:tau2.version`.
+
+## Interim reproduction
 
 ```
 make baseline          # τ²-Bench-style dev-slice baseline → eval/score_log.json + trace_log.jsonl

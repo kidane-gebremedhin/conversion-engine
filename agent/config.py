@@ -24,7 +24,6 @@ class Secrets(BaseModel):
     resend_from_domain: str = "convergine-sandbox.invalid"
     resend_from_address: str = "outbound@convergine-sandbox.invalid"
     resend_webhook_secret: SecretStr | None = None
-    mailersend_api_key: SecretStr | None = None
 
     africastalking_username: str = "sandbox"
     africastalking_api_key: SecretStr | None = None
@@ -33,6 +32,8 @@ class Secrets(BaseModel):
 
     hubspot_mcp_url: str = "http://localhost:4000"
     hubspot_private_app_token: SecretStr | None = None
+    hubspot_client_mode: str = ""  # mcp | rest | local; empty = auto (mcp if token else local)
+    hubspot_conversation_event_object_type: str = "convergine_conversation_event"
 
     calcom_base_url: str = "http://localhost:3000"
     calcom_api_key: SecretStr | None = None

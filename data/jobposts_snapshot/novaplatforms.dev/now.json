@@ -1,0 +1,10 @@
+[
+  {"company_domain": "novaplatforms.dev", "title": "Staff ML Platform Engineer", "posted_at": "2026-04-12", "role_category": "ml"},
+  {"company_domain": "novaplatforms.dev", "title": "Applied Scientist, Agents", "posted_at": "2026-04-08", "role_category": "ml"},
+  {"company_domain": "novaplatforms.dev", "title": "Senior Data Platform Engineer", "posted_at": "2026-04-01", "role_category": "data"},
+  {"company_domain": "novaplatforms.dev", "title": "Research Scientist, LLM Evals", "posted_at": "2026-03-25", "role_category": "ml"},
+  {"company_domain": "novaplatforms.dev", "title": "Senior Backend Engineer", "posted_at": "2026-03-20", "role_category": "engineering"},
+  {"company_domain": "novaplatforms.dev", "title": "Infra Engineer, GPU", "posted_at": "2026-03-10", "role_category": "ops"},
+  {"company_domain": "novaplatforms.dev", "title": "ML Engineer, Inference", "posted_at": "2026-03-05", "role_category": "ml"},
+  {"company_domain": "novaplatforms.dev", "title": "AI Engineer, RAG Infra", "posted_at": "2026-02-25", "role_category": "ml"}
+]

@@ -1,0 +1,19 @@
+[
+  {"company_domain": "acme.ai", "title": "Senior ML Engineer", "posted_at": "2026-04-10", "role_category": "ml", "department": "engineering", "url": "https://builtin.invalid/acme/1"},
+  {"company_domain": "acme.ai", "title": "Applied Scientist, LLM", "posted_at": "2026-04-05", "role_category": "ml", "department": "ml", "url": "https://builtin.invalid/acme/2"},
+  {"company_domain": "acme.ai", "title": "Data Platform Engineer", "posted_at": "2026-04-02", "role_category": "data", "department": "data", "url": "https://builtin.invalid/acme/3"},
+  {"company_domain": "acme.ai", "title": "AI Product Manager", "posted_at": "2026-03-30", "role_category": "ml", "department": "product", "url": "https://builtin.invalid/acme/4"},
+  {"company_domain": "acme.ai", "title": "Senior Backend Engineer (Python)", "posted_at": "2026-03-22", "role_category": "engineering", "department": "engineering", "url": "https://builtin.invalid/acme/5"},
+  {"company_domain": "acme.ai", "title": "Backend Engineer (Python)", "posted_at": "2026-03-20", "role_category": "engineering", "department": "engineering", "url": "https://builtin.invalid/acme/6"},
+  {"company_domain": "acme.ai", "title": "DevOps / Platform Engineer", "posted_at": "2026-03-15", "role_category": "ops", "department": "platform", "url": "https://builtin.invalid/acme/7"},
+  {"company_domain": "acme.ai", "title": "ML Engineer, Inference", "posted_at": "2026-03-10", "role_category": "ml", "department": "ml", "url": "https://builtin.invalid/acme/8"},
+  {"company_domain": "acme.ai", "title": "Frontend Engineer", "posted_at": "2026-03-01", "role_category": "engineering", "department": "engineering", "url": "https://builtin.invalid/acme/9"},
+  {"company_domain": "acme.ai", "title": "GTM Hire, Enterprise Sales", "posted_at": "2026-02-28", "role_category": "gtm", "department": "gtm", "url": "https://builtin.invalid/acme/10"},
+  {"company_domain": "acme.ai", "title": "Senior Data Engineer", "posted_at": "2026-02-25", "role_category": "data", "department": "data", "url": "https://builtin.invalid/acme/11"},
+  {"company_domain": "acme.ai", "title": "Research Scientist, RAG Infra", "posted_at": "2026-02-20", "role_category": "ml", "department": "ml", "url": "https://builtin.invalid/acme/12"},
+  {"company_domain": "acme.ai", "title": "Engineering Manager, Platform", "posted_at": "2026-02-15", "role_category": "engineering", "department": "engineering", "url": "https://builtin.invalid/acme/13"},
+  {"company_domain": "acme.ai", "title": "Product Designer", "posted_at": "2026-02-12", "role_category": "design", "department": "design", "url": "https://builtin.invalid/acme/14"},
+  {"company_domain": "acme.ai", "title": "Customer Success Engineer", "posted_at": "2026-02-08", "role_category": "gtm", "department": "gtm", "url": "https://builtin.invalid/acme/15"},
+  {"company_domain": "acme.ai", "title": "AI Engineer, Agents", "posted_at": "2026-02-05", "role_category": "ml", "department": "ml", "url": "https://builtin.invalid/acme/16"},
+  {"company_domain": "acme.ai", "title": "Backend Engineer, Billing", "posted_at": "2026-02-01", "role_category": "engineering", "department": "engineering", "url": "https://builtin.invalid/acme/17"}
+]

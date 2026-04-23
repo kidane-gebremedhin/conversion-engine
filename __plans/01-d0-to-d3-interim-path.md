@@ -18,7 +18,7 @@ Runs through the Day-0 table in [__specs/10 §0 equivalent / __specs/17 §A.7 sa
 |------|-----------|
 | Provision Resend free tier + verify sandbox domain + register reply webhook | One test email to your own address lands; webhook POSTs to `http://localhost:8000/webhooks/email/reply` with a valid signature |
 | Provision Africa's Talking sandbox + virtual shortcode + keyword prefix | One test SMS routed to webhook handler |
-| Provision HubSpot Developer Sandbox + install MCP server + create test contact | MCP `upsert_contact` returns an id |
+| Provision HubSpot Developer Sandbox + Private App token + run `scripts/hubspot_bootstrap.py` + start in-repo MCP server + create test contact | `scripts/hubspot_smoke.py` (spawns MCP server, calls `upsert_contact`) returns a contact id |
 | `docker compose up -d calcom postgres` + seed 3 event types | `POST /bookings` on the `discovery-30` slug succeeds |
 | Create Langfuse cloud project + generate keys | One test trace visible in UI |
 | OpenRouter API key + first smoke call | Smoke call returns; cost captured on Langfuse span |

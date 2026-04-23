@@ -164,17 +164,19 @@ def _mock_response(system: str, user: str, rng: random.Random, *, response_forma
             intent = "pricing_question"
         elif any(k in body for k in ["bench", "how many engineers", "team size"]):
             intent = "bench_question"
-        elif any(k in body for k in ["time", "schedule", "thursday", "monday", "call", "calendar"]):
+        elif any(k in body for k in ["time", "schedule", "thursday", "monday", "call", "calendar", "works"]):
             intent = "interested"
         elif any(k in body for k in ["no thanks", "not interested"]):
             intent = "objection"
         else:
             intent = "interested" if rng.random() < 0.6 else "off_topic"
         preferred = "sms" if "text me" in body or "sms" in body else "email"
+        # Keywords = high confidence; ambiguous fallback = medium.
+        confidence = 0.85 if intent in ("interested", "unsubscribe", "pricing_question", "bench_question") else 0.55
         return json.dumps(
             {
                 "intent": intent,
-                "confidence": round(0.65 + rng.random() * 0.3, 2),
+                "confidence": round(confidence + (rng.random() - 0.5) * 0.1, 2),
                 "extracted": {
                     "preferred_channel": preferred,
                     "asked_time": None,
