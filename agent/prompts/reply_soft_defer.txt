@@ -1,0 +1,26 @@
+You are composing a warm reply to a SOFT-DEFER prospect ("not now, circle
+back later").
+
+{{STYLE_MARKERS}}
+
+SOFT-DEFER REPLY GUARDRAILS:
+- Respect the defer. Do NOT try to re-engage now.
+- Confirm you'll reach back at the timeframe they suggested.
+- Offer ONE piece of information for when they DO come back — a relevant
+  peer-group research finding, or a new bench stack that just came online.
+- Max 60 words. Shorter is better.
+- NEVER use "just circling back" or "just following up" in the re-engagement
+  message later.
+
+CONTEXT:
+- Prospect reply: {{REPLY_TEXT}}
+- Their suggested re-engagement window: {{REENGAGE_WINDOW}}.
+
+TASK:
+Compose ONE reply as JSON:
+
+{
+  "subject": "Re: <original subject>",
+  "body_text": "<≤60 words>",
+  "reengagement_window_days": <int>
+}

@@ -1,162 +1,172 @@
-# 14 — Memo Specification (Act V, `memo.pdf`)
+# 14 — Memo Specification (Act V)
 
-**Source:** Challenge document — "Act V — The Memo" (Page 1 / Page 2), "Deliverables → Final Submission → PDF Report", "Evidence-Graph Grading".
+A two-page decision memo addressed to the Tenacious CEO and CFO. **Every number traces to a trace file or a published source.** The memo is the deliverable that determines whether this system is ever run against real Tenacious prospects.
 
-## 1. Constraints
+## Format constraints
 
-- **Exactly 2 pages, no more no less.** Grading enforces.
-- Addressed to the **Tenacious CEO and CFO**.
-- **Every numeric claim** must map to `evidence_graph.json` with a source trace_id, an `invoice_summary.json` line, a `method/ablation_results.json` selector, or a published public source.
-- **Fabricated Tenacious numbers are a disqualifying violation**, separate from the standard penalty.
-- Page size: US Letter or A4; 11–12 pt serif body; 1 inch / 2.54 cm margins. No cover page.
+- **Exactly 2 pages.** Not more, not less.
+- **PDF**, rendered from `memo/memo.md` via `memo/render.py` (weasyprint, md-to-pdf, or equivalent).
+- **Footer every page**: page number, trace-report UTC timestamp, `evidence_graph.json` hash.
+- **Font and margins** are configurable in `config.yaml > memo.typography` — not hard-coded.
 
-## 2. Page 1 — The Decision
+## Page 1 — The decision
 
-Mandatory sections in order:
+1. **Three-sentence executive summary.**
+   - Sentence 1: what was built.
+   - Sentence 2: the headline number (with 95% CI and cost).
+   - Sentence 3: the recommendation (pilot scope, budget, success criterion).
 
-### 2.1 Executive summary (3 sentences)
-- Sentence 1: What was built (one line).
-- Sentence 2: Headline number (pass@1 delta, or cost-per-qualified-lead, or stalled-thread delta).
-- Sentence 3: Recommendation (pilot scope).
+2. **τ²-Bench pass@1 results**, all with 95% CIs, sourced from `held_out_traces.jsonl`:
+   - Published reference (≈42% retail Feb 2026).
+   - Day-1 baseline (your reproduction).
+   - Your mechanism.
+   - GEPA / automated-optimization baseline on the same compute budget.
 
-### 2.2 τ²-Bench pass@1 results
-Three rows, each with 95 % CI:
-- Published τ²-Bench retail reference (~42 % ceiling).
-- Our Day-1 baseline (from `eval/score_log.json`).
-- Our method (from `method/ablation_results.json`).
+3. **Cost per qualified lead**, derived from:
+   - Rig + LLM spend (`invoice_summary.json` + `trace_log.jsonl`).
+   - Lead count (`qualified` = classifier confidence ≥ threshold AND engaged/curious reply).
+   - Target: **under $5**. Penalty threshold: **$8** (see [Evidence-Graph Grading](#evidence-graph-grading) below).
 
-Source: `method/held_out_traces.jsonl`.
+4. **Speed-to-lead delta**:
+   - Current Tenacious manual process stalled-thread rate: **30–40%** (`seed/baseline_numbers.md`).
+   - Your system's measured stalled-thread rate from traces.
+   - Show the math. Under-claiming with a note on sample size is acceptable; over-claiming without traces is disqualifying.
 
-### 2.3 Cost per qualified lead
-One number, derived as in [10 §4](10-observability.md). Source: `memo/invoice_summary.json` + `eval/trace_log.jsonl`. Target < $5; penalty if > $8 without justification.
+5. **Competitive-gap outbound performance**:
+   - Fraction of outbound that led with a research finding (AI-maturity score + top-quartile competitor gap) vs. a generic Tenacious pitch.
+   - Reply-rate delta between the two variants.
+   - Source: traces tagged by outbound variant.
 
-### 2.4 Speed-to-lead delta (stalled-thread rate)
-- Tenacious current manual process: 30–40 % stalled in first two weeks (source: Tenacious executive interview).
-- Our system measured from traces: `<N>%` (source: `eval/trace_log.jsonl`, filter `stage_final != BOOKED && nurture_last_at > 14d`).
+6. **Annualized dollar impact at three adoption scenarios**:
+   - One segment only.
+   - Two segments.
+   - All four segments.
+   - Each scenario includes expected deal volume, conversion rates (`seed/baseline_numbers.md`), and ACV (revised ranges, not aspirational).
+   - Each scenario is reproducible from trace files and published conversion rates.
 
-If our number is lower, **show the math** (traces counted, window, methodology).
+7. **Pilot-scope recommendation**:
+   - One segment name.
+   - A specific lead volume per month.
+   - A specific weekly budget.
+   - One measurable success criterion Tenacious can track after 30 days.
 
-### 2.5 Competitive-gap outbound performance
-- Fraction of outbound tagged `outbound_variant=signal_grounded` vs. `=exploratory`.
-- Reply-rate delta between the two, 95 % CI.
-- Source: traces filtered by the variant tag.
+## Page 2 — The Skeptic's Appendix
 
-### 2.6 Annualized dollar impact — three adoption scenarios
+1. **Four failure modes τ²-Bench does not capture** — but would show up in a real Tenacious deployment. Each entry states what it is, why the benchmark misses it, what would need to be added to catch it, and the business impact. Tenacious-specific (not generic B2B):
+   - e.g., offshore-perception objection, bench mismatch, brand-reputation risk from wrong hiring signals.
+   - Vague examples ("the agent will say something offensive") are penalized; specific examples ("the agent uses offshore language that triggers in-house hiring managers") are rewarded.
 
-| Scenario | Segments | Lead volume / mo | Discovery-call conv | Proposal conv | Close conv | ACV midpoint | Annualised impact |
-|----------|----------|------------------|---------------------|---------------|------------|--------------|-------------------|
-| Minimal | 1 segment only | X | 35–50 % | 25–40 % | — | $240–720 K (talent) / $80–300 K (consulting) | $A |
-| Moderate | 2 segments | Y | ... | ... | ... | ... | $B |
-| Full | All 4 segments | Z | ... | ... | ... | ... | $C |
+2. **Public-signal lossiness**:
+   - Known false-positive and false-negative modes of AI-maturity scoring.
+   - What does a quietly-sophisticated-but-silent company look like in your system? What does a loud-but-shallow one look like?
+   - For each, what does the agent do wrong, and what is the business impact?
 
-Every cell sources from `eval/trace_log.jsonl` (volume), published Tenacious conversion rates (35–50 %, 25–40 %), and the public pricing sheet. **No fabricated Tenacious numbers.**
+3. **Gap-analysis risks**:
+   - When is a top-quartile practice a **bad** benchmark? (Deliberate strategic choice by the prospect; capability genuinely irrelevant in their sub-niche.)
+   - One paragraph per real risk, with an example from your data.
 
-### 2.7 Pilot scope recommendation (one paragraph)
-Exactly:
-- **One segment** (pick one, justify in one line).
-- **One lead volume** per week.
-- **One weekly budget** (USD).
-- **One measurable success criterion** Tenacious can track after 30 days.
+4. **Brand-reputation comparison**:
+   - If the agent sends 1,000 signal-grounded emails and 5% contain factually wrong signal data, is the brand damage worth the 7–12% reply rate?
+   - Unit economics with an explicit assumption about the reputation cost of a wrong-signal email.
 
-## 3. Page 2 — The Skeptic's Appendix
+5. **One honest failure** — a probe from `probe_library.md` that was not resolved by the mechanism, and the impact if deployed anyway.
 
-Mandatory sections in order:
+6. **Kill-switch clause**:
+   - Specific trigger metric (e.g., "wrong-signal-email rate above 2% on a 50-message rolling window").
+   - Threshold.
+   - Rollback condition — what the Tenacious CEO does if the trigger fires.
 
-### 3.1 Four failure modes τ²-Bench does not capture
+## Evidence graph
 
-Each failure must be **Tenacious-specific** (offshore-perception objection, bench-mismatch risk, brand-reputation from wrong hiring signal, etc.). Each entry:
-- What the failure is.
-- Why τ²-Bench misses it.
-- What would need to be added to catch it.
-- What that addition would cost (rough engineering estimate).
+`memo/evidence_graph.json` — **every numeric claim in the memo maps to one of**:
 
-Vague entries ("agent might offend someone") are penalised; specific entries ("agent uses offshore language that triggers in-house hiring managers") earn credit.
+- A Langfuse trace ID (`trace_<id>`), OR
+- A row in `seed/baseline_numbers.md` (cited as "Tenacious internal, `seed/baseline_numbers.md`"), OR
+- A row in `seed/bench_summary.json` (cited as "Tenacious internal, `seed/bench_summary.json`, as of 2026-04-21"), OR
+- A trace file in `eval/runs/` (cited as "measured from trace ID `xxx`"), OR
+- A published public source (with URL).
 
-### 3.2 Public-signal lossiness
+Fabricated Tenacious numbers are a **disqualifying violation**, separate from the standard evidence-graph penalty.
 
-Name the known false-positive and false-negative modes of AI-maturity scoring:
+Structure:
 
-- **Quietly sophisticated but publicly silent**: what the agent does wrong, business impact.
-- **Loud but shallow**: what the agent does wrong, business impact.
-
-Cite at least one fixture case from the probe library for each.
-
-### 3.3 Gap-analysis risks
-
-One paragraph per real risk, with a concrete example from our data:
-- When a top-quartile practice is a **deliberate non-choice** by the prospect.
-- When a top-quartile practice is **irrelevant to the sub-niche**.
-
-### 3.4 Brand-reputation comparison (unit economics)
-
-Concrete statement: "If our agent sends 1 000 signal-grounded emails with 5 % factually-wrong-signal rate, is the brand damage worth the 7–12 % reply rate?"
-
-Include explicit unit-economics table:
-- Expected replies: `0.10 × 1 000 = 100`.
-- Expected brand-damaging incidents: `0.05 × 1 000 = 50`.
-- Assumed cost per brand-damaging incident (stated assumption, e.g., $2 000 — document how this is derived).
-- Break-even reply value: `(50 × $2 000) / 100 = $1 000 per reply to break even`.
-- Compare to expected deal value per reply given the conversion chain and ACV midpoint.
-
-### 3.5 One honest unresolved failure
-
-Name one probe from `probes/probe_library.md` that **we did not resolve**. State:
-- Why it resists resolution.
-- What the business impact would be if deployed anyway.
-- What it would cost to fix.
-
-### 3.6 Kill-switch clause
-
-One sentence of the measurable trigger metric + threshold under which the Tenacious CEO should pause the system. Example shape:
-
-> If the weekly `cost_per_qualified_lead` exceeds $10 OR the signal-grounded reply rate drops below 4 % for two consecutive weeks OR the false-positive rate on hand-labelled audit exceeds 8 %, pause outbound and revert to manual qualification.
-
-## 4. `evidence_graph.json` contract
-
-Shape:
 ```json
 {
-  "version": "1.0",
-  "generated_at": "2026-04-25T20:45:00Z",
+  "memo_sha256": "<hash-of-memo.pdf>",
+  "generated_at": "2026-04-25T20:00:00Z",
   "claims": [
     {
-      "claim_id": "memo.page1.executive_summary.headline",
+      "claim_id": "C-001",
+      "claim_text": "τ²-Bench retail pass@1 with our mechanism: 55% (95% CI 48–62%).",
       "page": 1,
-      "statement_hash": "sha256:...",
-      "statement_preview": "our method beats Day-1 baseline by +7.3 pts pass@1...",
-      "sources": [
-        {"type": "ablation_results", "path": "method/ablation_results.json", "selector": "$.held_out.method.pass_at_1"},
-        {"type": "ablation_results", "path": "method/ablation_results.json", "selector": "$.held_out.day1_baseline.pass_at_1"},
-        {"type": "stat_test", "path": "method/stat_test_output.json"}
-      ]
+      "section": "pass_at_1_results",
+      "source_type": "trace_file",
+      "source_ref": "method/held_out_traces.jsonl",
+      "trace_id_range": ["tau2_heldout_0001", "tau2_heldout_0020"]
     },
     {
-      "claim_id": "memo.page1.stalled_thread_delta",
-      "sources": [
-        {"type": "published", "citation": "Tenacious executive interview (seed materials)"},
-        {"type": "trace_count", "path": "eval/trace_log.jsonl", "filter": "stage_final != BOOKED && days_since_first_touch > 14"}
-      ]
+      "claim_id": "C-002",
+      "claim_text": "Baseline stalled-thread rate: 30–40%.",
+      "page": 1,
+      "section": "speed_to_lead",
+      "source_type": "seed_baseline_numbers",
+      "source_ref": "tenacious_sales_data/seed/baseline_numbers.md#operational-baselines"
+    },
+    {
+      "claim_id": "C-003",
+      "claim_text": "Industry cold-email reply rate baseline: 1–3%.",
+      "page": 1,
+      "section": "competitive_gap_outbound",
+      "source_type": "public_source",
+      "source_ref": "https://leadiq.com/benchmarks/2026"
     }
   ]
 }
 ```
 
-Every numeric string in `memo.md` is grep-able to an `evidence_graph.json` entry. A `make memo` step runs a linter (`scripts/lint_memo.py`) that fails the build if any number in `memo.md` lacks a graph entry.
+## Tenacious-branded content — draft marking
 
-## 5. Recommended tooling
+Any memo content that reproduces Tenacious-branded language is flagged in the evidence graph:
 
-- `memo/memo.md` → Pandoc → `memo/memo.pdf`.
-- Template: `memo/template.tex` with strict 2-page constraint (`\usepackage[a4paper, margin=2.54cm]{geometry}`).
-- `scripts/lint_memo.py`:
-  - Extracts numbers (regex `\b\d+(?:[.,]\d+)?\s*%?\b`) from memo.md.
-  - For each, checks that an `evidence_graph.json` claim statement contains it.
-  - Exits non-zero if unreferenced numbers exist.
-  - Exits non-zero if PDF page count ≠ 2.
+```json
+{
+  "claim_id": "C-017",
+  "claim_text": "\"Scale your AI team faster than in-house hiring can support\" (Segment 1 high-readiness pitch)",
+  "tenacious_branded": true,
+  "draft_status": "draft",
+  "source_ref": "tenacious_sales_data/seed/icp_definition.md#segment-1-pitch-language"
+}
+```
 
-## 6. Acceptance tests
+The Tenacious executive team reserves the right to redact any draft-status claim from the memo.
 
-- `memo/memo.pdf` is exactly 2 pages (`pdfinfo memo/memo.pdf | grep Pages` → `2`).
-- `scripts/lint_memo.py memo/memo.md memo/evidence_graph.json` exits 0.
-- Every `evidence_graph.json` claim's `source.path` exists and the `selector` (if JSON-path) resolves.
-- Kill-switch clause is present and contains at least one numeric threshold.
-- All four Tenacious-specific failure modes are present and distinct from each other.
+## README for the engineer who inherits this
+
+`memo/README_for_inheritor.md` — written for the engineer who would inherit this work after the challenge. Covers:
+
+- How to run enrichment for one prospect from cold.
+- How to run the τ²-Bench harness against the held-out slice.
+- Where every secret is stored (`.env`, `config.yaml`, HubSpot Developer Sandbox credentials — never committed).
+- Where the kill switch lives and how to flip it responsibly (program-staff approval required).
+- Known failure modes and the probe-library entries that trigger them.
+- Next steps if selected for the Tenacious pilot.
+
+## Evidence-Graph Grading (from the challenge brief)
+
+| Observable | Note |
+|---|---|
+| Reproduction fidelity | Against pinned τ²-Bench retail. |
+| Probe originality | Tenacious-specific probes earn higher credit. |
+| Mechanism attribution | Automated statistical check on Delta A. |
+| Cost-quality Pareto | Per qualified lead, not per message. Penalty if `>$8` without justification. Target: `<$5`. |
+| Evidence-graph integrity | Every claim in memo.pdf maps to a trace, seed number, or public source. Fabricated Tenacious numbers = disqualifying. |
+| Skeptic's Appendix quality | Must address Tenacious-specific risks (brand reputation, bench mismatch, offshore-perception objections). Generic risks are penalized. |
+
+## What the memo must NOT do
+
+- Exceed two pages.
+- Claim a Tenacious number not in `seed/baseline_numbers.md`, not in `seed/bench_summary.json`, not in a trace file, and not publicly citable.
+- Use aspirational ACV ranges. The revised Feb-2026 ranges in `baseline_numbers.md` are the only ones permitted.
+- Cite a named client or case study beyond what is anonymized in `seed/case_studies.md`.
+- Omit the kill-switch clause.
+- Present deltas without 95% CIs.

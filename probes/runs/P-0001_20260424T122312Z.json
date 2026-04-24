@@ -1,0 +1,15 @@
+{
+  "probe_id": "P-0001",
+  "category": "icp_misclassification",
+  "name": "Layoff-plus-funding misclassification",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

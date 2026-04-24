@@ -1,138 +1,229 @@
 # 00 — Decisions Log
 
-**Purpose:** Single source of truth for all architectural and scope decisions across the week. Every other `__plans/` file cites this document. No decision is re-opened by the engineer at the moment of implementation — if a choice is locked here, follow it; if it is open here, it names the phase where it closes and the fact that closes it.
+This is the append-only record of architectural and strategic decisions made while building the Conversion Engine. Every decision names its context, the options considered, the chosen option, and the reason. A decision is never silently reversed — a later entry supersedes an earlier one and explains why.
 
-**Calendar:** Days are labeled `D0 … D7` relative to the engineer's start. `D3` is the interim-submission day; `D7` is the final-submission day. Today's date at plan authoring is `2026-04-22` (noted for reference — the schedule is not bound to absolute dates).
-
----
-
-## 1. Locked decisions
-
-| # | Decision | Value | Rationale |
-|---|----------|-------|-----------|
-| L1 | Kill-switch default | **Unset** — routes all outbound to staff sink | Challenge rule 4 ([__specs/16 §1](/home/kg/Projects/10Academy/conversion-engine/__specs/16-data-handling-and-kill-switch.md)) |
-| L2 | Kill-switch env var name | `CONVERGINE_ENABLE_REAL_OUTBOUND` | Belt + braces with `config.yaml:killswitch.enabled` — both must be true to route to real recipients |
-| L3 | Draft-marker surface | `X-Convergine-Draft: true` header, `[DRAFT]` prefix in SMS, `draft: true` in HubSpot payload + Cal.com metadata, one-line footer in email body | [__specs/16 §6](/home/kg/Projects/10Academy/conversion-engine/__specs/16-data-handling-and-kill-switch.md) |
-| L4 | τ²-Bench seed | **42** | Published reproducibility convention; matches `config.example.yaml` |
-| L5 | Sealed-slice audit protocol | `scripts/audit_seal.sh` runs in CI + human sign-off before any Day-5 held-out invocation | [__specs/11 §2](/home/kg/Projects/10Academy/conversion-engine/__specs/11-tau2-bench-harness.md) |
-| L6 | Grading-fixed segment names | Do not rename. Filters may be refined; taxonomy may not | [__specs/03 §1](/home/kg/Projects/10Academy/conversion-engine/__specs/03-icp-and-segments.md) |
-| L7 | HubSpot required property | Every `Company` carries `convergine_crunchbase_uuid` — evidence-graph root | [__specs/08 §2](/home/kg/Projects/10Academy/conversion-engine/__specs/08-hubspot-integration.md) |
-| L8 | Tenacious redaction rights | Tenacious executive team may redact any Tenacious-branded content from the memo | Challenge rule 5 |
-| L9 | Channel hierarchy | Email primary → SMS secondary (warm-lead scheduling only) → Voice bonus (human-delivered) | [__specs/07 §1](/home/kg/Projects/10Academy/conversion-engine/__specs/07-channels.md) |
-| L10 | Voice rig | **Out of scope** for the week. Attempt only as a stretch if D7 ≥ 14:00 is clear | [__specs/07 §4](/home/kg/Projects/10Academy/conversion-engine/__specs/07-channels.md) |
-| L11 | Aggressive-hiring gate | Hard-coded: ≥ 5 open roles AND ≥ 2.0× velocity ratio. Agent cannot assert "aggressive hiring" below the threshold regardless of prompt framing | [__specs/05 §4](/home/kg/Projects/10Academy/conversion-engine/__specs/05-signal-enrichment-pipeline.md) |
-| L12 | Segment-4 AI-maturity gate | Score ≥ 2 required. Below that, abstain | [__specs/03 §1, §2](/home/kg/Projects/10Academy/conversion-engine/__specs/03-icp-and-segments.md) |
-| L13 | Evidence-graph-first discipline | `memo/evidence_graph.json` authored before memo prose. Linter fails if any number in `memo.md` is unresolved | [__specs/14 §4, §5](/home/kg/Projects/10Academy/conversion-engine/__specs/14-memo-specification.md) |
-| L14 | Brief cache TTL | 24 h per `crunchbase_uuid`. Invalidate via `make enrich PROSPECT=<uuid> --force` | [__specs/04 §8](/home/kg/Projects/10Academy/conversion-engine/__specs/04-data-sources.md) |
-| L15 | Live-crawl company cap | ≤ 200 companies in the challenge week. Prefer the frozen early-April 2026 snapshot | [__specs/04 §4](/home/kg/Projects/10Academy/conversion-engine/__specs/04-data-sources.md) |
-| L16 | Memo length | Exactly 2 pages. Linter verifies `pdfinfo memo.pdf \| grep Pages` returns `2` | [__specs/14 §1, §6](/home/kg/Projects/10Academy/conversion-engine/__specs/14-memo-specification.md) |
-| L17 | Cost-per-qualified-lead target | < $5 target, > $8 penalised without justification | [__specs/10 §4](/home/kg/Projects/10Academy/conversion-engine/__specs/10-observability.md) |
+Format: ADR-style. Each decision is dated in UTC and numbered.
 
 ---
 
-## 2. Open decisions (with named closing phase and closing fact)
+## D-001 · Channel hierarchy: email primary, SMS warm, voice bonus
 
-Each open decision has:
-- **Options** — candidates from the specs, no new candidates invented.
-- **Closes at** — the day/phase the decision must be made.
-- **Closing fact** — the observation or measurement that picks the winner.
-- **Default fallback** — the choice if the closing fact is inconclusive at the deadline.
+**Context**: Tenacious sells to founders, CTOs, and VPs of Engineering — a cohort that lives in email and LinkedIn, not SMS or voice. Cold SMS to this segment reads as intrusive; cold voice is worse.
 
-### O1 — Email provider
+**Options**:
+- (a) Voice-heavy, following the compliance-software version of this challenge.
+- (b) Email-primary, with SMS reserved for warm scheduling and voice as a bonus tier for booked discovery calls.
 
-- **Choice:** Resend free tier (3 000/mo).
-- **Closed at:** D0 pre-flight.
-- **Rationale:** Generous free tier and well-documented webhook schema; provisioned cleanly in sandbox.
-- **Impact of choice:** `agent/channels/email/send.py` uses the Resend client; `config.yaml:channels.email.provider` is pinned to `resend`.
+**Decision**: **(b)**. Matches the challenge brief's explicit scope choice and the Tenacious ICP. Rebuilding a voice-heavy architecture inverts the intended design.
 
-### O2 — Dev-tier model (Days 1–4)
+**Consequence**: the demo video must show an email-to-SMS handoff and books the discovery call via Cal.com; a cold voice call is explicitly out of scope.
 
-- **Options:** `qwen/qwen3-next-80b-a3b-instruct` via OpenRouter | `deepseek/deepseek-chat-v3.2` via OpenRouter.
-- **Closes at:** **D1 start of Act I baseline**.
-- **Closing fact:** First model to produce a stable τ²-Bench retail dev-slice run at pinned seed (no repeat/loop failures, coherent tool-call formatting). Use the other as `fallback`.
-- **Default fallback:** Qwen3-Next-80B-A3B — cheaper per 1k tokens, strong instruction-following benchmark record.
-- **Budget impact:** target < $4 over D1–D4.
-
-### O3 — Eval-tier model (Days 5–7)
-
-- **Options:** `claude-sonnet-4-6` | GPT-5 class.
-- **Closes at:** **D5 start of held-out run**.
-- **Closing fact:** Per-task cost at held-out scale (300 tasks = 3 conditions × 5 trials × 20). Winner is the one whose projected cost fits the $12 envelope with headroom for the ≥ 3-trial fallback.
-- **Default fallback:** Claude Sonnet 4.6 — prompt-cache pricing advantage on our static system prompt is meaningful.
-- **Budget impact:** target < $12 over D5–D7.
-
-### O4 — Act IV mechanism candidate
-
-- **Options:** (A) signal-confidence-aware phrasing | (B) bench-gated commitment policy | (C) ICP classifier with abstention | (D) tone-preservation check | (E) multi-channel handoff policy. Full descriptions: [__specs/13 §2](/home/kg/Projects/10Academy/conversion-engine/__specs/13-mechanism-design.md).
-- **Closes at:** **End of D4** after probe trigger-rate review.
-- **Closing fact:** Candidate whose design directly addresses the probe category that maximises `business_cost_usd_per_incident × observed_trigger_rate_pre_mechanism` in `probes/failure_taxonomy.md`.
-- **Default fallback:** (A) signal-confidence-aware phrasing — aligns with the highest-cost axis (brand reputation) and composes with the other defences.
-- **Always kept as ablation variants regardless of winner:** (B) and (D). Cost is near zero and they earn safety credit.
-
-### O5 — Pilot segment recommendation (for memo Page 1 §2.7)
-
-- **Options:** Segment 1 (recently-funded A/B) | Segment 2 (mid-market restructuring) | Segment 3 (leadership transition) | Segment 4 (capability gap).
-- **Closes at:** **D7 during memo composition**, after all metrics have landed.
-- **Closing fact:** Segment with the largest measured signal-grounded-vs-exploratory reply-rate delta and cleanest bench match in our trace corpus.
-- **Default fallback:** Segment 1 — cleanest public signal from Crunchbase + job posts; largest ACV spread ($240–720 K talent + $80–300 K consulting).
-
-### O6 — Automated-optimization baseline (Delta B)
-
-- **Options:** GEPA (Generative Evolutionary Prompt Automation) | AutoAgent.
-- **Closes at:** **D5 start**.
-- **Closing fact:** Which framework can be configured to match our method's compute budget (same dev-tier model, same trials, same slice) with less than 2 h of integration work.
-- **Default fallback:** GEPA — simpler prompt-evolution loop; closer to our mechanism's surface; cheaper to run at our budget.
-
-### O7 — Dev-tier concurrency
-
-- **Options:** 1 concurrent LLM call | 2 concurrent.
-- **Closes at:** **D0 pre-flight**.
-- **Closing fact:** OpenRouter rate-limit behaviour observed on the first 10 calls. Two concurrent is faster but risks 429s on the free tier.
-- **Default fallback:** 2 — declared in `config.example.yaml`. If we see any 429, drop to 1 and document.
-
-### O8 — HubSpot integration mode
-
-- **Choice:** MCP via in-repo server (`agent/integrations/hubspot_mcp_server.py`), spawned as a stdio subprocess by `HubSpotClient`. Tools: `upsert_company`, `find_company_by_crunchbase_uuid`, `upsert_contact`, `create_deal`, `advance_deal_stage`, `log_event`.
-- **Closed at:** 2026-04-23, D0 pre-flight.
-- **Rationale:** HubSpot's official remote MCP server (`https://mcp.hubspot.com`) is OAuth 2.1 + PKCE only — unsuitable for a non-interactive backend. Community servers (`peakmojo/mcp-hubspot`, `lkm1developer/hubspot-mcp-server`) omit deals and custom objects, which [__specs/08](/home/kg/Projects/10Academy/conversion-engine/__specs/08-hubspot-integration.md) requires. A thin Python MCP server wrapping REST with the Private App token matches the spec verbs exactly, keeps auth simple, and puts MCP in the critical path without an OAuth flow.
-- **Fallbacks:** `HUBSPOT_CLIENT_MODE=rest` skips the MCP hop and calls REST directly on the same interface. `HUBSPOT_CLIENT_MODE=local` writes JSON fixtures for no-token dev. Auto-default is MCP when the token is set, local otherwise.
+**Spec anchor**: [`__specs/07-channels.md`](../__specs/07-channels.md)
 
 ---
 
-## 3. Explicitly out of scope for the week
+## D-002 · Dev-tier vs eval-tier model split
 
-These are **not** open decisions — they are pre-declared out of scope. Revisit only if all required deliverables are green:
+**Context**: Limited LLM budget (target dev <$4, eval <$12 per trainee for the week). Burning eval-tier credit on dev-slice runs is a common Day-0 mistake.
 
-- Voice rig (demo-only bonus, [__specs/07 §4](/home/kg/Projects/10Academy/conversion-engine/__specs/07-channels.md)).
-- Market-space mapping stretch — only attempted at D7 14:00-local go/no-go ([__specs/15](/home/kg/Projects/10Academy/conversion-engine/__specs/15-market-space-map.md)).
-- Learned ICP classifier with training labels — default is rules-based abstention ([__specs/03 §2](/home/kg/Projects/10Academy/conversion-engine/__specs/03-icp-and-segments.md)).
-- Live HubSpot production portal — sandbox only.
-- Real Cal.com calendars — Tenacious team calendars are mocked by program-provided sample calendars.
-- Live prospect crawls beyond the 200-company cap.
+**Options**:
+- (a) One model tier for everything.
+- (b) Cheap dev-tier for Acts I–III and mechanism prototyping, expensive eval-tier only for the sealed held-out partition.
 
----
+**Decision**: **(b)**. Dev-tier: Qwen3-Next-80B-A3B or DeepSeek V3.2 via OpenRouter. Eval-tier: Claude Sonnet 4.6 or GPT-5 class. Eval-tier access is guarded at runtime by `EVAL_TIER_ENABLED=1`.
 
-## 4. Change control
+**Consequence**: every LLM call carries a `tier` attribute; cost attribution distinguishes dev vs eval; budget monitoring is per-tier.
 
-A decision in §1 (Locked) only re-opens if:
-
-1. The engineer files an entry in [06-risks.md](06-risks.md) documenting why the lock is blocking.
-2. The re-open is reflected in this file with a new row and a dated note.
-3. The cascading impact on every downstream `__plans/` file is updated.
-
-A decision in §2 (Open) that reaches its `Closes at` phase **must** close before the phase ends. The engineer records the chosen value, the observation that closed it, and any deviations from the default fallback here.
+**Spec anchor**: [`__specs/11-tau2-bench-harness.md`](../__specs/11-tau2-bench-harness.md), [`__specs/18-configuration.md`](../__specs/18-configuration.md)
 
 ---
 
-## 5. Quick-reference table for implementers
+## D-003 · Kill switch is a single function
 
-| Question | Answer / pointer |
-|----------|------------------|
-| Is the kill-switch flipped? | **No.** Unset by default (L1). |
-| Which LLM do I call? | **Dev-tier** unless in a held-out eval run (O2, O3). |
-| Do I need to route through killswitch? | **Yes**, every outbound — [__specs/16 §2](/home/kg/Projects/10Academy/conversion-engine/__specs/16-data-handling-and-kill-switch.md). |
-| Can I assert "aggressive hiring"? | Only if L11 gate passes. |
-| Can I pitch Segment 4? | Only if L12 gate passes. |
-| What's the cost-per-lead target? | L17: < $5, > $8 penalised. |
-| Where does a number in the memo come from? | An `evidence_graph.json` entry per L13. |
-| Have I touched the sealed held-out slice? | Not before D5, and only after L5 audit passes. |
+**Context**: The policy requires every outbound to pass through a kill-switch gate. The gate must be auditable and tamper-evident.
+
+**Options**:
+- (a) A decorator applied to each channel-send function.
+- (b) A per-channel middleware.
+- (c) **One function `deliver(channel, to, payload)` in `agent/kill_switch.py`** as the **only** path from agent to provider SDKs.
+
+**Decision**: **(c)**. A CI grep fails the build if any file outside `agent/kill_switch.py` directly imports a provider SDK's send method.
+
+**Consequence**: the provider-adapter layer exposes `send(to, payload)` functions but they are only callable from `deliver()`. Code review enforces.
+
+**Spec anchor**: [`__specs/16-data-handling-and-kill-switch.md`](../__specs/16-data-handling-and-kill-switch.md)
+
+---
+
+## D-004 · Briefs as Pydantic models mirroring JSON Schemas
+
+**Context**: The agent must emit `hiring_signal_brief.json` and `competitor_gap_brief.json` matching the provided JSON Schemas. Drift between schemas and code is a common failure.
+
+**Options**:
+- (a) Hand-write Pydantic models, re-validate against schema in tests.
+- (b) Generate Pydantic models from JSON Schema (`datamodel-code-generator`).
+- (c) Validate JSON at write time only, no Pydantic types.
+
+**Decision**: **(a)** with a CI test that validates each generated brief against the schema. Generator tooling adds friction; validation in test catches drift.
+
+**Consequence**: `agent/enrichment/briefs.py` contains Pydantic classes; `tests/test_schema_conformance.py` validates fixtures against `tenacious_sales_data/schemas/*.schema.json`.
+
+**Spec anchor**: [`__specs/05-signal-enrichment-pipeline.md`](../__specs/05-signal-enrichment-pipeline.md)
+
+---
+
+## D-005 · Thread isolation keyed by prospect email
+
+**Context**: Multi-thread leakage (co-founder + VP Eng at same company) is a probe category and a real-world failure mode.
+
+**Options**:
+- (a) Key conversation state by company domain.
+- (b) Key by `(prospect_email, thread_id)`.
+
+**Decision**: **(b)**. The agent's context builder loads history by `contact_email` only; a CI lint grep flags any file that loads by `company_domain` for conversation context.
+
+**Consequence**: HubSpot queries use contact_email as the join key. The probe library includes a multi-thread leakage test at zero-tolerance trigger rate.
+
+**Spec anchor**: [`__specs/06-agent-design.md`](../__specs/06-agent-design.md), [`__specs/12-probe-library.md`](../__specs/12-probe-library.md)
+
+---
+
+## D-006 · ICP classifier is rule-based, LLM only for free-text sub-signals
+
+**Context**: The ICP classification rules are ordered and deterministic. An LLM-based classifier would be harder to audit and more expensive.
+
+**Options**:
+- (a) LLM-based classifier with the rules in the prompt.
+- (b) **Rule-based classifier; LLM only for sub-signals** (founder anti-offshore stance, interim/acting detection, AI-adjacent role titles).
+
+**Decision**: **(b)**. The primary classifier is deterministic Python code. LLM sub-calls are isolated to the specific free-text interpretation problems they solve.
+
+**Consequence**: classifier behavior is auditable. Sub-signal LLM calls are traced and budgeted independently.
+
+**Spec anchor**: [`__specs/06-agent-design.md`](../__specs/06-agent-design.md)
+
+---
+
+## D-007 · Abstention is a first-class outcome
+
+**Context**: Probe category 1 (ICP misclassification) tests that the agent abstains when signal is weak. Abstention must not be a failure path.
+
+**Options**:
+- (a) Abstention falls back to a default (Segment 1).
+- (b) **Abstention triggers the exploratory email prompt** (`composer_abstain.txt`), which makes no specific pitch.
+
+**Decision**: **(b)**. Below `icp.abstain_threshold` (default 0.6), the composer uses the exploratory prompt. `tenacious_segment = abstain` in HubSpot.
+
+**Consequence**: the memo cites abstention-rate as a quality metric alongside reply rate.
+
+**Spec anchor**: [`__specs/03-icp-and-segments.md`](../__specs/03-icp-and-segments.md), [`__specs/06-agent-design.md`](../__specs/06-agent-design.md)
+
+---
+
+## D-008 · Tone-preservation check is a second LLM call
+
+**Context**: The style guide specifies five tone markers. Composer drift is a probe category.
+
+**Options**:
+- (a) Embed tone rules in the composer prompt only.
+- (b) **Second LLM call that scores the draft against the five markers**, with regeneration below threshold.
+
+**Decision**: **(b)**. Adds one LLM call per message; traceable cost in `tone_check.*` span. Threshold: `4/5` on every marker; one retry then flag for human.
+
+**Consequence**: this is a candidate mechanism for Act IV. Its cost is tracked separately for the memo's unit-economics analysis.
+
+**Spec anchor**: [`__specs/06-agent-design.md`](../__specs/06-agent-design.md), [`__specs/13-mechanism-design.md`](../__specs/13-mechanism-design.md)
+
+---
+
+## D-009 · Seed files are authoritative; YAML mirrors with placeholder resolution at boot
+
+**Context**: Tenacious prices, ACVs, and bench counts are in `seed/baseline_numbers.md` and `seed/bench_summary.json`. Duplicating them in `config.yaml` risks drift.
+
+**Options**:
+- (a) Hard-code numbers in YAML.
+- (b) **Mirror with `${PLACEHOLDER}` syntax; resolve at boot from seed files.**
+
+**Decision**: **(b)**. `agent/config.py` parses seed files on startup and substitutes placeholders in the YAML. Fails boot if a placeholder cannot be resolved.
+
+**Consequence**: updating a seed number propagates automatically to the running config. No numeric literal for price or ACV appears in Python code.
+
+**Spec anchor**: [`__specs/18-configuration.md`](../__specs/18-configuration.md)
+
+---
+
+## D-010 · Defer implementation-framework choice (LangGraph / PydanticAI / hand-rolled)
+
+**Context**: Several frameworks work. Lock-in is premature before we know which capabilities (human-in-loop handoff, multi-thread isolation, tool routing) dominate.
+
+**Options**:
+- (a) Commit to LangGraph.
+- (b) Commit to PydanticAI.
+- (c) **Hand-rolled state machine with narrow interfaces, revisit after Act II.**
+
+**Decision**: **(c)** for the interim; revisit if Act IV mechanism work exposes a clear framework fit. The spec is framework-agnostic.
+
+**Consequence**: if migration happens, it is scoped to the `agent/classifier.py`, `agent/composer.py`, `agent/reply_handler.py` modules only.
+
+**Spec anchor**: [`__specs/01-architecture.md`](../__specs/01-architecture.md)
+
+---
+
+## D-011 · HubSpot custom-property prefix = `tenacious_`
+
+**Context**: HubSpot Developer Sandbox is multi-tenant in principle; other tests or future tenants could share the sandbox.
+
+**Options**:
+- (a) Unprefixed custom properties.
+- (b) **Prefix every custom property with `tenacious_`.**
+
+**Decision**: **(b)**. One-filter removability. Safer interop with other sandbox consumers.
+
+**Consequence**: every HubSpot property in the schema carries `tenacious_`; `HUBSPOT_PORTAL_ID` asserts non-production portal at runtime.
+
+**Spec anchor**: [`__specs/08-hubspot-integration.md`](../__specs/08-hubspot-integration.md)
+
+---
+
+## D-012 · Cold sequence is strictly 3 touches
+
+**Context**: The email sequences seed file caps cold at three emails. A fourth touch within 30 days is a policy violation per the seed.
+
+**Options**:
+- (a) Cap at 3 and close, as specified.
+- (b) Extend with a fourth "signal update" touch.
+
+**Decision**: **(a)**. Non-negotiable.
+
+**Consequence**: re-engagement (stalled thread) is a separate sequence that fires only after an engaged/curious reply.
+
+**Spec anchor**: [`__specs/07-channels.md`](../__specs/07-channels.md)
+
+---
+
+## D-013 · Market-space map is explicitly opt-in
+
+**Context**: The distinguished-tier stretch requires hand-labeling a validation sample. Superficial attempts misdirect strategy.
+
+**Options**:
+- (a) Default-on stretch.
+- (b) **`market_space.enabled: false` in `config.yaml`; trainee opts in deliberately with a Day-6-specific budget.**
+
+**Decision**: **(b)**. The stretch must not displace Act V effort.
+
+**Consequence**: if Act V slips, the stretch is cut first. This is written into [`09-work-breakdown.md`](09-work-breakdown.md).
+
+**Spec anchor**: [`__specs/15-market-space-map.md`](../__specs/15-market-space-map.md)
+
+---
+
+## Decision change template
+
+To supersede a decision, add a new entry referencing the old:
+
+```
+## D-N · <new decision>
+Supersedes: D-M
+Reason: <what changed>
+...
+```

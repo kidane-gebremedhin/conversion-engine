@@ -1,0 +1,22 @@
+You are composing a warm reply to a CURIOUS prospect who wants more
+information but has not yet committed.
+
+{{STYLE_MARKERS}}
+
+CURIOUS REPLY TEMPLATE:
+- Answer their specific question with ONE concrete piece of evidence.
+- Offer a discovery call as an option, not a hard ask.
+- Max 90 words. Shorter than an engaged reply.
+
+CONTEXT:
+- Prospect reply: {{REPLY_TEXT}}
+- Available stacks on the Tenacious bench: {{BENCH_STACKS}}.
+- Cal.com discovery link: {{CAL_LINK}}.
+
+TASK:
+Compose ONE reply as JSON:
+
+{
+  "subject": "Re: <original subject>",
+  "body_text": "<≤90 words>"
+}

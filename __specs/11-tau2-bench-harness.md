@@ -1,120 +1,117 @@
 # 11 — τ²-Bench Harness
 
-**Source:** Challenge document — "Act I — Baseline and Ground Truth", "Act IV — Mechanism Design", "Data Source 4 — τ²-Bench", baseline table ("Voice agent conversational pass@1 ceiling ~42 % τ²-Bench retail").
+τ²-Bench is the non-substitutable benchmark anchor for the challenge. It grounds the Day-1 baseline, provides the retail-domain analog for B2B qualification conversation, and supplies the sealed held-out slice on which Act IV mechanisms are honestly evaluated.
 
-## 1. What τ²-Bench is
+## Provider
 
-Sierra Research's dual-control conversational agent benchmark. Retail domain is the closest public analog to B2B qualification; telecom is used for secondary probes. Repo: `github.com/sierra-research/tau2-bench`.
+- **Repo**: `github.com/sierra-research/tau2-bench` (configurable via `TAU2_BENCH_REPO_URL`).
+- **Pinned SHA**: stored in `config.yaml > tau2.pinned_sha` for reproducibility; never advanced mid-week.
+- **Domains**:
+  - **Retail** (primary) — closest public analog to B2B qualification conversation; this is where the baseline and mechanism are evaluated.
+  - **Telecom** (secondary) — supplies probe signal for time-zone confusion, escalation phrasing.
 
-## 2. Bench slices
+## Partitions
 
-| Slice | Size | Purpose | Access |
-|-------|------|---------|--------|
-| Dev | 30 tasks | Iteration during Days 1–4 | Open |
-| Sealed held-out | 20 tasks | Act IV final scoring | Delivered by program staff; **not opened** until Day 5 |
-| Telecom probes | ~10 tasks | Secondary probes in Act III | Open |
+| Partition | Size | Source | Use |
+|---|---|---|---|
+| Retail dev slice | 30 tasks | Ships with τ²-Bench | Act I baseline reproduction, Acts II/III iteration |
+| Retail sealed held-out | 20 tasks | Program staff, delivered after policy acknowledgement is signed | Act IV mechanism evaluation **only** |
 
-**Hard rule:** No Act IV mechanism may be tuned on the sealed held-out slice. Breaking this invalidates Delta A.
+**The sealed partition is stored outside the repo.** `TAU2_HELDOUT_PATH` points to a location outside the git tree; loading it in dev-iteration code is a policy violation.
 
-## 3. Pinning
+## Harness contract
 
-Pin exact commits in `config.yaml`:
+`eval/harness.py` wraps τ²-Bench so that every run:
 
-```yaml
-eval:
-  tau2_bench:
-    repo: https://github.com/sierra-research/tau2-bench
-    pinned_tag: v1.x.y                 # set at Day-0 kickoff
-    domain_retail_version: v1.x.y
-    domain_telecom_version: v1.x.y
-    dev_tier_model: qwen3-next-80b-a3b-instruct
-    eval_tier_model: claude-sonnet-4-6
-    seed: 42
-    trials_per_slice: 5
-```
+1. Writes a canonical `score_log.json` with `mean`, `95% CI`, `cost_per_run_usd`, `p50_latency_ms`, `p95_latency_ms`.
+2. Writes `trace_log.jsonl` — one JSON object per trial, with full turn-by-turn trajectories.
+3. Emits a Langfuse trace per trial with the attributes in [spec 10](10-observability.md).
+4. Refuses to run the sealed partition unless `TAU2_SEALED_ACCESS=1` **and** `EVAL_TIER_ENABLED=1` are both set (guard against accidental burn of the 20-task budget on dev-tier models).
+5. Refuses to run any partition without a pinned model ID from `config.yaml > llm.models.<tier>`.
 
-A change to any of these values requires a re-run and a diff entry in `eval/baseline.md`.
+## Model tiers
 
-## 4. Harness wrapper
+| Tier | Purpose | Candidates | Budget |
+|---|---|---|---|
+| **Dev** | Development, probing, mechanism prototyping; all dev-slice runs | Qwen3-Next-80B-A3B, DeepSeek V3.2 (via OpenRouter) | `budgets.dev_llm_max_usd` (target under $4, Days 1–4) |
+| **Eval** | Sealed held-out scoring only | Claude Sonnet 4.6, GPT-5 class | `budgets.eval_llm_max_usd` (target under $12, Days 5–7) |
 
-```python
-# eval/harness.py
+Model IDs, base URLs, and API keys are in env vars (never hard-coded). See [spec 18](18-configuration.md).
 
-class Tau2BenchHarness:
-    def __init__(self, cfg, llm_client, langfuse_client): ...
+## Act I — Baseline and ground truth
 
-    def run_slice(self, slice_name: Literal["dev", "held_out", "telecom"],
-                  trials: int,
-                  method_name: str) -> SliceResult: ...
+**Goal**: reproduce the published τ²-Bench retail baseline within a 95% CI.
 
-    def score(self, results: SliceResult) -> ScoreReport:
-        """pass@1 mean, 95 % bootstrap CI (1000 resamples), cost per run, p50/p95 latency."""
-```
+Process:
 
-Every run emits to:
-- `eval/trace_log.jsonl` (full trajectories, one JSONL row per trace, format [10 §5](10-observability.md))
-- `eval/score_log.json` (aggregate metrics, keyed by `(slice, method, model, timestamp)`)
+1. Clone τ²-Bench at pinned SHA into `eval/tau2/`.
+2. Run `eval/harness.py --partition retail_dev_30 --model <dev_tier_model> --trials 5 --seed <seed>` (5-trial pass@1 on the full 30-task dev slice).
+3. Record mean, 95% CI, cost per run, p50/p95 latency into `score_log.json`.
+4. Write `trace_log.jsonl` — full trajectories across all dev trials.
+5. Write `baseline.md` (≤400 words) describing what reproduced, the CI, the cost, and any unexpected behavior.
 
-Langfuse instrumentation wraps every task invocation; tags include `slice`, `task_id`, `method_name`, `trial`.
+**Interim-submission requirement**: `score_log.json` + `trace_log.jsonl` + `baseline.md` committed to `eval/`.
 
-## 5. Baseline protocol (Act I — due Wed 22 Apr)
+The published τ²-Bench retail pass@1 ceiling is **~42%** per the leaderboard (Feb 2026). Reproducing within 95% CI is the gate for Acts II–IV; failure to reproduce means the dev-tier model or the harness is miscalibrated and must be fixed before mechanism work.
 
-1. Clone + checkout pinned tag.
-2. Run retail domain on the 30-task dev slice with the pinned dev-tier model.
-3. 5 trials → compute pass@1 mean + 95 % CI.
-4. Record cost per run, p50/p95 latency.
-5. Write `eval/baseline.md` (max 400 words) covering: what was reproduced, confidence interval, cost per run, unexpected behaviour.
-6. Report against the published τ²-Bench retail reference (~42 % ceiling noted in the challenge baseline table).
+## Act II — Production stack use of τ²-Bench
 
-`score_log.json` must contain at least two entries by Wed 21:00 UTC:
-- `slice=dev, method=day1_baseline, trials=5`
-- `slice=dev, method=reproduction_check` — an independent re-run verifying the harness is deterministic under `seed=42`.
+The τ²-Bench harness is also used in the interim submission to show the baseline score alongside p50/p95 latency from real email/SMS interactions. The two measurements are distinct:
 
-## 6. Act IV evaluation protocol (due Sat 25 Apr)
+- τ²-Bench is a **benchmark** — clean, controlled, no human in the loop.
+- The production-stack latency metrics come from synthetic-prospect interactions against the live email and SMS channels.
 
-Three conditions, **all on the sealed held-out slice**, all with identical compute budget:
+Both appear in the interim PDF report.
 
-| Condition | Label |
-|-----------|-------|
-| Day-1 baseline (no mechanism) | `method=day1_baseline` |
-| Automated-optimization baseline (GEPA **or** AutoAgent) | `method=auto_optim` |
-| Your mechanism | `method=<chosen_mechanism>` |
+## Act IV — Mechanism evaluation
 
-### Deltas
+Three conditions evaluated on the sealed held-out 20 tasks:
 
-- **Delta A** = `your_method − day1_baseline` on held-out. **Must be positive with 95 % CI separation. Must pass paired statistical test at p < 0.05.**
-- **Delta B** = `your_method − auto_optim` on held-out. Failing Delta B does not fail the week; unexplained underperformance does.
-- **Delta C** = `your_method − published τ²-Bench reference`. Informational only.
+| Condition | Model | Cost source |
+|---|---|---|
+| **Your Day-1 baseline** | Pinned dev-tier | `budgets.dev_llm_max_usd` |
+| **Your mechanism** | Eval-tier | `budgets.eval_llm_max_usd` |
+| **Automated-optimization baseline** (GEPA or AutoAgent) | Same compute budget as mechanism | Shared eval budget |
 
-### Statistical test
+Three deltas:
 
-`method/stat_test.py` implements:
-- Paired bootstrap over per-task pass@1 (10 000 resamples).
-- Report two-tailed p-value for `H0: your_method == day1_baseline`.
-- Report Delta A point estimate + 95 % CI.
+- **Delta A** = `your_method - your_day1_baseline`. Must be positive with 95% CI separation. This is the primary grading metric.
+- **Delta B** = `your_method - automated-optimization baseline` on the same compute budget. Failing Delta B does not fail the week; unexplained underperformance does.
+- **Delta C** = `your_method - published τ²-Bench reference`. Informational only.
 
-## 7. Cost envelope
+Statistical test for Delta A: paired bootstrap over the 20 held-out tasks, two-sided, **p < 0.05** required.
 
-Per the production-stack table:
-- Days 1–4 (dev-tier, dev slice): target < $4 total LLM spend.
-- Days 5–7 (eval-tier, held-out × 3 conditions × 5 trials): target < $12 total.
+Artifacts:
 
-If projected cost to finish held-out exceeds $12, cut trials per condition from 5 → 3 (still within paper-style conventions) and note in `method.md`.
+- `method/ablation_results.json` — pass@1, 95% CI, cost-per-task, p95 latency for all three conditions.
+- `method/held_out_traces.jsonl` — raw traces from all three conditions.
+- `method/stat_test.md` — test statistic, p-value, discussion.
 
-## 8. Outputs
+## Retail domain probes (linked to Act III)
 
-| File | Act | Purpose |
-|------|-----|---------|
-| `eval/score_log.json` | I, IV | Aggregate metrics per run |
-| `eval/trace_log.jsonl` | I, IV | Full trajectories |
-| `eval/baseline.md` | I | ≤ 400-word Act I write-up |
-| `method/held_out_traces.jsonl` | IV | Raw traces across the three held-out conditions |
-| `method/ablation_results.json` | IV | pass@1, 95 % CI, cost-per-task, p95 latency for method + baseline + auto-optim |
-| `method/method.md` | IV | Mechanism, rationale, hyperparameters, 3 ablation variants, statistical test |
+The retail domain is instrumented with a subset of the probe library (see [spec 12](12-probe-library.md)). Specifically, τ²-Bench retail supplies native signal for:
 
-## 9. Acceptance tests
+- **Dual-control coordination** — retail's central failure mode (agent proceeds vs. waits for the user).
+- **Tone drift** across 3–4 turns.
+- **Time-zone confusion** (the telecom domain is the stronger source).
+- **Cost pathology** — prompts that cause runaway token usage.
 
-- `make baseline` rerun with `seed=42` reproduces `score_log.json` within numerical tolerance.
-- `score_log.json` entries all carry a non-null 95 % CI derived from the bootstrap.
-- The 20-task sealed held-out file is not listed in any git-tracked training or tuning script — verified by `scripts/audit_seal.sh`.
-- `stat_test.py` produces a non-null p-value < 0.05 when run against `method/held_out_traces.jsonl` for the final method vs. day-1 baseline.
+Tenacious-specific probes (ICP misclassification, bench over-commitment, gap over-claiming) are **not** native to τ²-Bench. They run as separate probe-library tests in `probes/runs/`.
+
+## Reproducibility requirements
+
+Every τ²-Bench run records:
+
+- Git SHA of `eval/tau2/` (checked against pinned SHA; fails hard on drift).
+- Git SHA of this repo at run time.
+- Model ID, temperature, seed, max-tokens.
+- Full hyperparameter snapshot.
+- UTC timestamp start and end.
+
+## What the τ²-Bench integration must NOT do
+
+- Run the sealed partition with a dev-tier model (cheaper but defeats the purpose).
+- Run the sealed partition without the dual-guard `TAU2_SEALED_ACCESS=1` AND `EVAL_TIER_ENABLED=1`.
+- Use a model other than the pinned dev-tier for Acts I–III or a non-eval-tier model for Act IV.
+- Modify the sealed held-out tasks in any way. Anomaly detection in the harness flags diffs against the program-delivered checksum.
+- Skip the 5-trial pass@1 on the dev slice. Pass@1 with fewer trials inflates the CI artificially.

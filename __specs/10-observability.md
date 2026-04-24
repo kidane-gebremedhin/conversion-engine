@@ -1,144 +1,155 @@
-# 10 — Observability (Langfuse + Cost Attribution)
+# 10 — Observability
 
-**Source:** Challenge document — "The Production Stack" (Observability row), "Evidence-graph integrity" (grading).
+Langfuse is the trace-and-cost record. Every LLM call, tool call, enrichment step, reply classification, and send event emits a span attached to a conversation-level trace. **No claim in the memo survives without a trace ID.**
 
-## 1. Provider
+## Setup
 
-**Langfuse cloud free tier.** One project per trainee. All agent + enrichment LLM calls instrumented.
+- **Provider**: **Langfuse cloud free tier** (no credit card).
+- **Rationale**: per-trace cost attribution, tool-span support, UI for review, and an OTel-compatible export for the evidence graph.
 
-## 2. What we trace
+## Configuration (env)
 
-| Span | Attributes |
-|------|------------|
-| `enrich.<source>` (crunchbase / jobposts / layoffs / leadership / stack / ai_maturity / gap) | `crunchbase_uuid`, elapsed, cost, records_fetched |
-| `agent.prompt.<name>` | `stage`, `variant`, `segment`, `model`, token_in, token_out, cost |
-| `tool.<name>` | `stage`, `input_hash`, elapsed |
-| `email.send` / `sms.send` | `trace_id`, `to` (sink), `draft`, `variant` |
-| `hubspot.<op>` | `rate_limit_remaining`, elapsed |
-| `calcom.<op>` | `booking_id`, elapsed |
-| `probe.<id>` | pass/fail, cost, elapsed |
-| `tau2_bench.task.<id>` | trial, pass@1, cost |
+| Env var | Purpose |
+|---|---|
+| `LANGFUSE_HOST` | e.g., `https://cloud.langfuse.com` |
+| `LANGFUSE_PUBLIC_KEY` | Project public key |
+| `LANGFUSE_SECRET_KEY` | Project secret key |
+| `LANGFUSE_PROJECT_ID` | Project identifier |
+| `LANGFUSE_TRACE_PREFIX` | Namespace prefix, e.g., `trp1_week10_conversion_engine_<trainee_id>` |
 
-Every root span carries:
-- `thread_id` (uuid)
-- `crunchbase_uuid`
-- `killswitch_enabled` (bool)
-- `method_name` (Day-1 baseline / auto-optim / our-method)
-- `git_sha`
+## Trace model
 
-## 3. Cost attribution
-
-### Per-call cost
-
-Derived at the LLM-client level from OpenRouter's response metadata:
-```python
-cost_usd = (tokens_in * cost_per_1k_in + tokens_out * cost_per_1k_out) / 1000
-```
-
-Store `cost_usd` on every LLM span. Provider prices pulled from `config.yaml` → `llm.providers.<model>.prices`.
-
-### Rig usage
-
-Resend + Africa's Talking + HubSpot + Cal.com are free in their used tiers. We still log a `$0.00` entry per call for completeness — keeps the invoice totals honest.
-
-### invoice_summary.json
-
-Built at the end of the week from Langfuse exports + the `cost_usd` column. Shape:
-
-```json
-{
-  "period": {"from": "2026-04-19T00:00:00Z", "to": "2026-04-25T21:00:00Z"},
-  "totals": {
-    "usd": 14.82,
-    "calls": 1871,
-    "prospects_touched": 47
-  },
-  "by_model": {
-    "qwen3-next-80b-a3b": {"calls": 1612, "usd": 3.21},
-    "deepseek-v3.2": {"calls": 52, "usd": 0.18},
-    "claude-sonnet-4-6": {"calls": 207, "usd": 11.43}
-  },
-  "by_stage": {
-    "enrich": {"calls": 412, "usd": 0.89},
-    "draft_outreach": {"calls": 147, "usd": 2.31},
-    "tone_check": {"calls": 294, "usd": 1.42},
-    "classify_reply": {"calls": 123, "usd": 0.61},
-    "tau2_bench": {"calls": 825, "usd": 8.51},
-    "probes": {"calls": 70, "usd": 1.08}
-  },
-  "by_day": [
-    {"date": "2026-04-19", "usd": 0.42},
-    {"date": "2026-04-20", "usd": 1.08},
-    ...
-  ]
-}
-```
-
-Path: `memo/invoice_summary.json`. Referenced by `evidence_graph.json` for every cost claim in the memo.
-
-## 4. Cost-per-qualified-lead
-
-**Definition** (used in memo, Page 1):
+One **trace** per prospect conversation (keyed on `thread_id = hash(prospect_email)`). All outbound, inbound, enrichment, classification, and handoff events on that conversation attach as child spans.
 
 ```
-cost_per_qualified_lead_usd =
-    (total_llm_usd + amortised_rig_usd) 
-  / (count(threads with state >= QUALIFIED) during period)
+trace: thread_<thread_id>
+├── span: enrichment.pipeline
+│   ├── span: crunchbase.lookup
+│   ├── span: layoffs.check
+│   ├── span: jobposts.fetch
+│   ├── span: leadership.detect
+│   ├── span: ai_maturity.score
+│   ├── span: tech_stack.infer
+│   ├── span: bench_match
+│   ├── span: competitor_gap.peers
+│   └── span: classifier.icp
+├── span: composer.cold_1
+│   ├── span: llm.compose (model=<tier>, prompt_tokens=, completion_tokens=, usd_cost=)
+│   └── span: tone_check (scores_per_marker)
+├── span: deliver.email
+│   ├── attribute: kill_switch_state = "sink" | "live"
+│   └── attribute: provider_message_id
+├── span: hubspot.record_outbound
+├── span: webhook.email.inbound
+├── span: reply.classify
+├── span: composer.reply_engaged
+├── span: deliver.email
+├── span: calendar.booking_created
+├── span: context_brief.synthesize
+└── span: hubspot.record_booking
 ```
 
-- `amortised_rig_usd` = $0 during the challenge week (all sandbox/free tiers). We still note the formula because the memo must show how the metric scales with paid tiers.
-- **Target: < $5 per qualified lead.** Penalty if > $8 without explicit justification.
+## Span attributes (required)
 
-## 5. trace_log.jsonl
+Every span sets at minimum:
 
-Format: one JSON object per **completed trace** (a root span plus its subtree). Schema:
+- `span.name` — canonical, dot-delimited.
+- `prospect.domain` — for filtering.
+- `prospect.segment` — current segment (may change across enrichment passes).
+- `prospect.ai_maturity_score` — snapshot at span start.
+- `brief.hiring_signal_generated_at` — for staleness checks.
+- `cost.usd` — dollar cost of this span (LLM spans; zero elsewhere).
+- `trace.total_cost_usd` — rolling trace-level sum.
+- `tier` — `dev` or `eval`, critical for cost budget accounting.
+- `kill_switch.state` on any `deliver.*` span.
 
-```json
-{
-  "trace_id": "...",
-  "thread_id": "...",
-  "crunchbase_uuid": "...",
-  "start_ts": "2026-04-22T09:15:00Z",
-  "end_ts": "2026-04-22T09:15:04Z",
-  "root_span": "agent.full_flow",
-  "spans": [
-    {"name": "enrich.crunchbase", "elapsed_ms": 123, "cost_usd": 0.0},
-    {"name": "agent.prompt.draft_outreach", "elapsed_ms": 812, "cost_usd": 0.0018, "tokens_in": 2812, "tokens_out": 314}
-  ],
-  "outcome": {"stage_final": "QUALIFIED", "segment": 2, "variant": "signal_grounded"},
-  "tags": {"killswitch_enabled": false, "method_name": "signal_confidence_aware"}
-}
-```
+Optional but encouraged:
 
-Collected by a Langfuse export script (`scripts/export_traces.py`) into `eval/trace_log.jsonl` and `method/held_out_traces.jsonl`.
+- `tone_check.scores` — per-marker score object.
+- `honesty_flags` — flags active at the time of send.
 
-## 6. p50 / p95 latency — interim deliverable requirement
+## Cost attribution
 
-The interim PDF report requires **p50/p95 latency numbers from at least 20 real email and SMS interactions pulled from trace log**.
-
-Implementation:
+`agent/observability/cost.py` computes per-span cost from the model's published rate card, stored in `config.yaml > llm.rate_cards`. Rates are in USD per 1M tokens, separated into input and output. The function:
 
 ```python
-# scripts/latency_report.py
-import json, numpy as np
-lines = [json.loads(l) for l in open("eval/trace_log.jsonl")]
-for stage in ("email.send", "sms.send", "agent.prompt.draft_outreach", "enrich.full"):
-    ms = [s["elapsed_ms"] for t in lines for s in t["spans"] if s["name"] == stage]
-    print(stage, "n=", len(ms), "p50=", np.percentile(ms, 50), "p95=", np.percentile(ms, 95))
+cost = (prompt_tokens / 1_000_000) * rate_card[model].input
+     + (completion_tokens / 1_000_000) * rate_card[model].output
 ```
 
-Persist output to `eval/latency_report.json` (interim-report-ready). Must cover ≥ 20 synthetic prospect interactions.
+**Never hard-coded.** Updating a model's rate card is a config change.
 
-## 7. Alerting
+## Latency metrics
 
-- Per-prospect cost > $0.20 → emit Langfuse event `cost.pathology`, pause orchestrator.
-- HubSpot 429 repeated 3× in 30 s → back-off + pause.
-- Any `tone_check.pass == false` after 3 retries → `handoff_human`.
-- Langfuse ingestion failure → local fall-back JSONL append; never block the main flow.
+From trace spans, compute:
 
-## 8. Acceptance tests
+- `p50_latency_compose_ms`, `p95_latency_compose_ms` — wall-time of the composer span (cold and warm separately).
+- `p50_latency_enrichment_ms`, `p95_latency_enrichment_ms` — full pipeline wall-time.
+- `p50_latency_reply_classify_ms` — reply classification.
+- `p50_latency_end_to_end_ms` — inbound-webhook-in to outbound-sent across a reply.
 
-- Every LLM call present in `trace_log.jsonl` has non-null `cost_usd`, `tokens_in`, `tokens_out`.
-- The sum over all `cost_usd` in `trace_log.jsonl` equals (± $0.05) `invoice_summary.json.totals.usd`.
-- `latency_report.json` contains p50/p95 over ≥ 20 distinct `trace_id`s for `email.send`.
-- Every memo claim citing a number has a matching `evidence_graph.json` entry whose `source.trace_id` or `source.invoice_line` exists in the artifacts.
+The **interim submission requires p50/p95 latency across ≥20 real email+SMS interactions**. Computed from `eval/runs/interim/` trace exports.
+
+## Conversation-level metrics
+
+Computed periodically (daily during the challenge week) and emitted as Langfuse "metrics" events:
+
+| Metric | Definition |
+|---|---|
+| **cold_send_count** | Outbound cold emails dispatched |
+| **reply_rate_cold** | Replies / cold sends over last 72h |
+| **reply_rate_signal_grounded** | Replies when `signal_grounded=True` (segment match + briefs complete) |
+| **reply_rate_exploratory** | Replies on `abstain` path (generic exploratory email) |
+| **stalled_thread_rate** | `(engaged|curious replies that did NOT book within 14d) / (engaged|curious replies)` — the memo KPI |
+| **abstention_rate** | `abstain / total classifications` |
+| **bench_gap_detected_rate** | Prospects with `bench_available=false` |
+| **tone_check_regenerate_rate** | Fraction of drafts regenerated once, twice, or flagged |
+| **handoff_rate_per_reason** | Breakdown by the five handoff conditions |
+| **cost_per_qualified_lead** | Rolling `total_trace_cost / count(qualified_leads)` |
+
+## Evidence-graph export
+
+`evidence_graph.json` (final submission) maps each numeric claim in `memo.pdf` to:
+
+- A Langfuse trace ID, OR
+- A row in `seed/baseline_numbers.md`, OR
+- A row in `seed/bench_summary.json`, OR
+- A public-source URL.
+
+`agent/observability/langfuse.py` exposes `export_evidence_graph(run_id) -> EvidenceGraph` that walks all traces for a run and emits the JSON.
+
+## Data minimization in traces
+
+Langfuse spans must **not** log:
+
+- Full PII beyond first name + email.
+- Payment or banking data.
+- HIPAA / GDPR-health categories.
+
+When a composer prompt includes the full `hiring_signal_brief.json`, the span records the **brief URL** as an attribute, not the full brief body. Brief files live in the repo and are referenced, not duplicated.
+
+## τ²-Bench integration
+
+Every τ²-Bench trial emits a dedicated trace prefixed `tau2_<domain>_<task_id>` with:
+
+- `tier` attribute for dev/eval selection.
+- `tau2.task_id`, `tau2.partition` (`dev_30` or `sealed_20`).
+- Full turn-by-turn spans for retrospection.
+
+`score_log.json` and `trace_log.jsonl` (Act I deliverables) are derived from these traces. See [spec 11](11-tau2-bench-harness.md).
+
+## Dashboards (helpful, not required)
+
+Langfuse UI boards for the challenge week:
+
+- **Conversation funnel** — cold → reply → book, by segment.
+- **Cost per trace distribution** — histogram, p50/p95 markers, cost-per-lead overlay.
+- **Tone-check regeneration rate** — alert when >10% (signals composer prompt drift).
+- **Abstention-rate trend** — alert when >30% (signals classifier or data-source regression).
+
+## What the observability layer must NOT do
+
+- Silently drop spans on network error. Spans are buffered and retried; if the buffer overflows, the process logs a prominent warning.
+- Log prompts containing real customer PII (there is none, but the assertion must exist in code).
+- Attribute cost to the wrong tier. Every `llm.*` span sets `tier` explicitly; attribution by model-ID heuristic is prohibited because eval-tier and dev-tier models may share APIs.
+- Export more detail to Langfuse than the policy allows. The export list is in `config.yaml > observability.allowed_attributes`.

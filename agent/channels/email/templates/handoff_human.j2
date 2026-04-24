@@ -1,12 +1,13 @@
-Subject: [HANDOFF] Thread escalation — {{ prospect.company_name }}
+Subject: {{ subject }}
 
-On-call lead,
+Hi {{ prospect.first_name }},
 
-Escalating thread {{ thread_id }} — reason: {{ reason }}.
+Our delivery lead, {{ lead_name }}, will follow up within 24 hours with a
+specific answer on {{ handoff_topic }}.
 
-Summary:
-{{ thread_summary }}
+Thanks for the note — {{ handoff_reason_short }}.
 
-Context brief: data/briefs_cache/{{ prospect.uuid }}/
-
-— Convergine agent (draft)
+{{ sender.first_name }}
+{{ sender.title }}
+Tenacious Intelligence Corporation
+gettenacious.com

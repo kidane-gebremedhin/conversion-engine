@@ -1,76 +1,69 @@
-# 00 — System Overview
+# 00 — Overview
 
-**Source:** Challenge document — "Summary", "The Client", "Sales Jargon for Talent Outsourcing", "Beyond grading — the real prize".
+## The client
 
-## 1. What we are building
+**Tenacious Consulting and Outsourcing** is a real B2B firm providing talent outsourcing and project-based consulting to technology-driven companies in North America and Europe. Engagement sizes range 3–12 engineers over 6–24 months for outsourcing, and 4 weeks to 4 months for project consulting. The delivery bench operates out of Addis Ababa with a guaranteed 3–5 hour daily time-zone overlap.
 
-An automated lead-generation and conversion agent for **Tenacious Consulting and Outsourcing** (B2B talent outsourcing + project consulting, ~3–12 engineers per engagement, 6–24 month duration, clients in NA + EU). The agent:
+## The problem
 
-1. **Finds** net-new companies from public data that match one of four ICP segments.
-2. **Grounds** the first outreach in a verifiable *hiring signal brief* + *competitor gap brief*.
-3. **Qualifies** the prospect through email conversation, honouring Tenacious's tone and bench constraints.
-4. **Nurtures** with follow-ups and hands off to SMS for warm-lead scheduling when the prospect prefers it.
-5. **Books** a discovery call via Cal.com with a human Tenacious delivery lead, attaching a context brief to the calendar invite.
+The Tenacious CEO and CFO describe three linked pains:
 
-## 2. Why it exists (business problem)
+1. **Outbound prospecting is manual.** A partner or senior engineer identifies candidate companies through personal network and LinkedIn browsing, with no systematic coverage of the market.
+2. **Qualification is inconsistent.** Two prospects with identical firmographics receive very different first messages because outreach applies intuition rather than a repeatable playbook.
+3. **Follow-up is slow.** Once a prospect replies, the person who initiated handles the thread personally — queued behind delivery work and losing momentum.
 
-Current Tenacious pain from CEO/CFO interviews:
+The revenue consequence is a long tail of conversations that stall not because the prospect said no but because Tenacious did not keep up. The Tenacious CFO estimates **30–40% of qualified conversations stall in the first two weeks** (per `seed/baseline_numbers.md`).
 
-- **Outbound is manual** — partner/senior-engineer ad-hoc LinkedIn browsing, no systematic coverage.
-- **Qualification is inconsistent** — identical firmographics get different first messages.
-- **Follow-up is slow** — 30–40 % of qualified conversations stall in the first two weeks.
+## The system
 
-A reply-rate lift from the 1–3 % baseline to the 7–12 % signal-grounded top-quartile on ~60 thoughtful touches per week per person, multiplied by $240–720 K talent-ACV and $80–300 K consulting-ACV, is the value capture the system targets.
+An agent that does five things, in order:
 
-## 3. ICP segments (grading-fixed)
+1. **Finds** prospective companies from public data (Crunchbase ODM, layoffs.fyi, public job posts).
+2. **Qualifies** them against a real intent signal (the hiring signal brief + AI-maturity score + bench-to-brief match).
+3. **Grounds** the conversation in a research finding, not a vendor pitch (the competitor gap brief).
+4. **Runs a nurture sequence** via email (primary), SMS (warm scheduling), and voice (bonus).
+5. **Books a discovery call** with a Tenacious delivery lead, handing off a context brief.
 
-| # | Segment | Primary signal | Pitch register |
-|---|---------|----------------|----------------|
-| 1 | Recently-funded Series A/B startups | $5–30 M round in last 180 days | "scale faster than in-house hiring supports" / "stand up first AI function" |
-| 2 | Mid-market platforms restructuring cost | Layoff in last 120 days, 200–2000 people | "replace higher-cost roles; operational discipline" |
-| 3 | Engineering-leadership transitions | New CTO/VP Eng in last 90 days | Narrow vendor-reassessment window |
-| 4 | Specialized capability gaps | ML platform / agentic / data-contract build + AI-maturity ≥ 2 | Project-based, higher margin |
+The character of the challenge: the system is **not only a qualifier, it is a researcher**. The most successful output reads as a grounded view of a prospect's AI maturity, a comparison against the top quartile of their sector, and a specific gap worth a thirty-minute conversation. Qualification is the filter; research is the value proposition.
 
-Segment names are **fixed** for grading — do not rename. Filter adaptation is allowed; taxonomy is not.
+## Scope boundaries
 
-## 4. In scope
+**In scope for the challenge week:**
 
-- `τ²-Bench` retail reproduction, 30-task dev slice + 20-task sealed held-out.
-- Email-primary conversational agent with HubSpot + Cal.com integration.
-- Hiring signal brief (funding, job-post velocity, layoffs, leadership change, tech stack, AI maturity 0–3).
-- Competitor gap brief (5–10 top-quartile sector peers, AI-maturity distribution, 2–3 specific practice gaps).
-- 30+ probe library tailored to Tenacious failure modes.
-- One original mechanism (Act IV) with Delta A positive at p < 0.05.
-- Evidence-graph-backed 2-page memo addressed to the Tenacious CEO + CFO.
+- Synthetic prospects derived from public Crunchbase / LinkedIn / layoffs.fyi data with fictitious contact details.
+- Outbound email and SMS routed through the program-operated sink.
+- τ²-Bench retail baseline reproduction on a pinned dev-tier model.
+- Adversarial probing, a mechanism over the target failure mode, and a two-page memo.
 
-## 5. Non-goals
+**Out of scope:**
 
-- Real customer contact data, real CRM exports, live prospect names (explicitly forbidden).
-- Voice-heavy architecture ported from the compliance-software challenge — prospects are founders/CTOs/VPs Eng who live in email.
-- Fabricated case studies or client logos beyond what the anonymised sales deck contains.
-- Quoting pricing beyond the public-tier bands; deeper pricing routes to a human.
-- Live crawls beyond 200 companies in the challenge week; use the frozen April 2026 snapshot by default.
+- Real Tenacious customer data (no CRM exports, real threads, or live deal names).
+- Real outbound contact (the kill switch routes every message to the staff sink; flipping it requires program-staff approval).
+- Named client references in cold outreach (these require a discovery call and explicit consent).
+- Fabricated case studies, pricing bands, or bench counts beyond what the seed files specify.
 
-## 6. Success definitions
+## The five-act loop
 
-### Interim (Wed 22 Apr 21:00 UTC)
-Acts I + II complete: τ²-Bench baseline with 95 % CI on dev slice, full production stack end-to-end on one synthetic prospect (email → reply → qualify → book → HubSpot + Cal.com), enrichment pipeline producing `hiring_signal_brief.json` and `competitor_gap_brief.json` for ≥ 1 test prospect, p50/p95 latency over ≥ 20 synthetic interactions. See [17-deliverables-checklist.md](17-deliverables-checklist.md) §1.
+The engineering work decomposes into five acts, with an optional distinguished-tier stretch:
 
-### Final (Sat 25 Apr 21:00 UTC)
-All five acts + optional market-space stretch. Delta A positive p < 0.05 on sealed held-out slice, 30+ Tenacious-specific probes, 2-page memo with evidence graph, ≤ 8 min demo video. See [17-deliverables-checklist.md](17-deliverables-checklist.md) §2.
+| Act | Goal | Primary deliverable |
+|---|---|---|
+| **I — Baseline and Ground Truth** | Reproduce τ²-Bench retail baseline on the dev slice with a pinned dev-tier model. | `score_log.json`, `trace_log.jsonl`, `baseline.md` (≤400 words) |
+| **II — Production Stack Assembly** | Stand up email + SMS + CRM + calendar + signal-enrichment end-to-end. | One complete synthetic-prospect thread, HubSpot screenshot, Cal.com booking, p50/p95 latency across ≥20 interactions |
+| **III — Adversarial Probing** | 30+ Tenacious-specific probes classified by business cost. Identify the highest-ROI failure. | `probe_library.md`, `failure_taxonomy.md`, `target_failure_mode.md` |
+| **IV — Mechanism Design** | Original mechanism addressing the target failure mode. Beat Day-1 baseline on sealed held-out with 95% CI separation; honest report vs. GEPA/AutoAgent. | `method.md`, `ablation_results.json`, `held_out_traces.jsonl`, Delta A positive with p<0.05 |
+| **V — The Memo** | Two-page decision memo to the Tenacious CEO and CFO. Every number traces to source. | `memo.pdf` (exactly 2 pages), `evidence_graph.json`, `README.md` for the inheriting engineer |
+| **Distinguished-tier stretch** | Population-level market-space map applying AI-maturity scoring to the full Crunchbase ODM sample. | `market_space.csv`, `top_cells.md`, `methodology.md` |
 
-### Beyond grading
-Best submission runs a four-week pilot against **real** Tenacious prospects with program-staff oversight. That is the real grade — trustworthy enough that the CEO points it at live revenue.
+## Submission shape
 
-## 7. Budget envelope
+Two submissions:
 
-- **Under $20 per trainee for the week**, split roughly: dev-tier LLM < $4 Days 1–4, eval-tier LLM < $12 Days 5–7, rigs free.
-- **Cost-per-qualified-lead target < $5**; penalty triggers above $8 without justification.
+1. **Interim submission** covers Acts I and II (`README.md`, `agent/`, `eval/`, `baseline.md`, plus a PDF report on architecture, stack status, enrichment status, competitor-gap-brief status, τ²-Bench baseline, p50/p95 latency, working/not-working notes).
+2. **Final submission** adds Acts III–V (`probes/`, `method.md`, `ablation_results.json`, `held_out_traces.jsonl`, `evidence_graph.json`, `memo.pdf`) plus a demo video (≤8 min) showing the end-to-end email thread, HubSpot populating in real time, SMS channel handoff, abstention on weak signal, τ²-Bench harness, and the probe-library walkthrough.
 
-## 8. Hard guardrails (disqualifying if violated)
+The real prize is not the grade. The best submission becomes the starting point for a Tenacious pilot against real prospects, under program-staff oversight, with real commercial consequence. The specs are written for that destination.
 
-- No real Tenacious customer data leaves Tenacious.
-- Every interacted-with prospect during the week is synthetic; outbound routes to the staff-controlled sink by default.
-- Kill-switch default = **unset** (routes to sink). README documents the flag explicitly.
-- All Tenacious-branded output marked `draft` in metadata.
-- **Fabricated Tenacious numbers in the memo are disqualifying**, separate from the standard penalty.
+## Guiding slogan
+
+> Find the lead. Ground the conversation. Respect the brand. Ship it.

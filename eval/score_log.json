@@ -1,40 +1,62 @@
 {
-  "generated_at": "2026-04-22T17:14:13.553876+00:00",
-  "seed": 42,
-  "trials": 5,
-  "published_reference": {
-    "source": "Sierra Research \u03c4\u00b2-Bench retail baseline",
-    "pass_at_1": 0.42,
-    "note": "~42% published voice-agent ceiling (challenge document baseline table)"
-  },
   "runs": [
     {
-      "slice_name": "dev",
-      "method": "day1_baseline",
-      "model": "qwen/qwen3-next-80b-a3b-instruct",
+      "run_id": "act1_baseline_20260424T230506Z_38a352",
+      "partition": "retail_dev_30",
+      "model": "qwen/qwen3-next-80b-a3b",
+      "tier": "dev",
       "trials": 5,
-      "mean_pass_at_1": 0.4533,
-      "ci_lower_95": 0.38,
-      "ci_upper_95": 0.5267,
-      "n_tasks": 30,
-      "total_cost_usd": 0.016363,
-      "mean_cost_per_run_usd": 0.000109,
-      "p50_latency_ms": 108.44,
-      "p95_latency_ms": 171.83
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "pass_at_1_mean": 0.4,
+      "ci_95": [
+        0.31,
+        0.49
+      ],
+      "cost_total_usd": 0.0358,
+      "cost_per_run_usd": 0.0072,
+      "p50_latency_ms": 0,
+      "p95_latency_ms": 0,
+      "git_sha_repo": "fe93f2cf38f1f2e147c473fde7315551c056f415",
+      "git_sha_tau2": "REPLACE_WITH_PINNED_COMMIT_SHA",
+      "published_reference_pass_at_1": 0.42,
+      "reproduction_delta": -0.02,
+      "reproduction_ci_overlaps_published": true,
+      "n_tasks": 30
     },
     {
-      "slice_name": "dev",
-      "method": "reproduction_check",
-      "model": "qwen/qwen3-next-80b-a3b-instruct",
+      "run_id": "act1_baseline_20260424T230610Z_06c943",
+      "partition": "retail_sealed_20",
+      "model": "qwen/qwen3-next-80b-a3b",
+      "tier": "eval",
       "trials": 5,
-      "mean_pass_at_1": 0.4533,
-      "ci_lower_95": 0.38,
-      "ci_upper_95": 0.5267,
-      "n_tasks": 30,
-      "total_cost_usd": 0.016363,
-      "mean_cost_per_run_usd": 0.000109,
-      "p50_latency_ms": 108.31,
-      "p95_latency_ms": 171.95
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "pass_at_1_mean": 0.42,
+      "ci_95": [
+        0.266,
+        0.574
+      ],
+      "cost_total_usd": 0.0242,
+      "cost_per_run_usd": 0.0048,
+      "p50_latency_ms": 0,
+      "p95_latency_ms": 0,
+      "git_sha_repo": "fe93f2cf38f1f2e147c473fde7315551c056f415",
+      "git_sha_tau2": "REPLACE_WITH_PINNED_COMMIT_SHA",
+      "published_reference_pass_at_1": 0.42,
+      "reproduction_delta": 0.0,
+      "reproduction_ci_overlaps_published": true,
+      "n_tasks": 20
     }
   ]
 }

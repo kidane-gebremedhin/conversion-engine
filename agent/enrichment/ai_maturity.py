@@ -1,111 +1,184 @@
-"""AI-maturity scorer (0–3) with per-signal justification.
+"""AI-maturity scoring (0–3) with per-input justifications.
 
-Deterministic, signal-weighted — see __specs/05 §5 for weights. The optional
-LLM call is used only for the justification paragraph, via the dev-tier model
-(cheap); we skip it here and produce structured justifications from the inputs.
+Six weighted inputs per the challenge brief. Every justification carries
+signal, status (free-text), weight, confidence, and optional source_url.
+Absence of evidence is explicitly acceptable — the policy requires honesty,
+not false positives.
 """
 from __future__ import annotations
 
-from statistics import pstdev
+from typing import Any
 
-from agent.state import AiMaturityJustification, AiMaturityScore, CrunchbaseRecord
-
-
-_WEIGHTS = {
-    "ai_adjacent_open_roles": 1.0,
-    "named_ai_leadership": 1.0,
-    "github_activity": 0.6,
-    "executive_ai_commentary": 0.6,
-    "modern_data_ml_stack": 0.3,
-    "strategic_communications": 0.3,
-}
-_NORM = sum(_WEIGHTS.values())  # 3.8
+from agent.config import config
+from agent.enrichment import jobposts
 
 
-def score(
-    record: CrunchbaseRecord,
-    *,
-    ai_adj_fraction: float,
-    open_roles_now: int,
-    ai_leadership_title: str | None,
-    stack_items: list[str],
-    stack_bench_matches: list[str],
-    github_activity: float = 0.0,
-    exec_commentary: float = 0.0,
-) -> AiMaturityScore:
-    contrib: dict[str, float] = {}
-    evidence: dict[str, str] = {}
+# Numeric mapping for weight names
+_WEIGHT_TO_NUM = {"high": 3, "medium": 2, "low": 1}
 
-    # 1. AI-adjacent open roles
-    adj = min(1.0, ai_adj_fraction * 1.5 + (0.2 if open_roles_now >= 8 else 0.0))
-    contrib["ai_adjacent_open_roles"] = adj
-    evidence["ai_adjacent_open_roles"] = (
-        f"{int(ai_adj_fraction * open_roles_now)} of {open_roles_now} open roles are AI-adjacent "
-        f"({int(ai_adj_fraction * 100)}%)"
-    )
 
-    # 2. Named AI leadership
-    if ai_leadership_title:
-        contrib["named_ai_leadership"] = 0.95
-        evidence["named_ai_leadership"] = f"public role: {ai_leadership_title}"
-    else:
-        contrib["named_ai_leadership"] = 0.0
-        evidence["named_ai_leadership"] = "no public AI leadership role detected"
+def _score_ai_adjacent_open_roles(record: dict[str, Any]) -> tuple[int, str, str]:
+    """Returns (strength 0..3, status description, confidence)."""
+    domain = record["domain"]
+    entry = jobposts.company_jobposts(domain)
+    if not entry:
+        return 0, "No job-post data available for this company.", "low"
+    roles = entry.get("open_roles_today", [])
+    total = len(roles)
+    adjacent = sum(1 for r in roles if r.get("ai_adjacent"))
+    if total == 0:
+        return 0, "No open engineering roles found.", "medium"
+    ratio = adjacent / total
+    if ratio >= 0.25:
+        return 3, f"{adjacent} of {total} open engineering roles ({ratio:.0%}) are AI-adjacent.", "high"
+    if ratio >= 0.1:
+        return 2, f"{adjacent} of {total} open engineering roles ({ratio:.0%}) are AI-adjacent.", "high"
+    if adjacent >= 1:
+        return 1, f"{adjacent} of {total} open roles is AI-adjacent.", "medium"
+    return 0, "No AI-adjacent roles among current openings.", "high"
 
-    # 3. GitHub activity
-    contrib["github_activity"] = github_activity
-    evidence["github_activity"] = (
-        "active public AI/ML repos" if github_activity > 0.5 else "no public AI repos found"
-    )
 
-    # 4. Executive commentary
-    contrib["executive_ai_commentary"] = exec_commentary
-    evidence["executive_ai_commentary"] = (
-        "recent executive AI commentary in public press" if exec_commentary > 0.5 else "no recent AI commentary"
-    )
-
-    # 5. Modern data/ml stack
-    stack_hit = min(1.0, 0.25 * len({m for m in stack_bench_matches if m in ("data", "ml")}) + 0.05 * len(stack_items))
-    contrib["modern_data_ml_stack"] = stack_hit
-    evidence["modern_data_ml_stack"] = (
-        f"stack items include: {', '.join(stack_items[:3])}" if stack_items else "no public stack signal"
-    )
-
-    # 6. Strategic communications — skip, rarely available
-    contrib["strategic_communications"] = 0.0
-    evidence["strategic_communications"] = "not evaluated in interim"
-
-    # raw = Σ (weight_i × evidence_strength_i)
-    weighted = {k: _WEIGHTS[k] * v for k, v in contrib.items()}
-    raw = sum(weighted.values())
-    max_possible = _NORM
-    # Score: map raw/max onto 0..3
-    score_int = max(0, min(3, round((raw / max_possible) * 3)))
-
-    # Confidence: 1 - stdev(weighted)/max_possible — shrinks when signals disagree strongly.
-    if len(weighted) >= 2:
-        conf = 1 - (pstdev(list(weighted.values())) / max_possible)
-    else:
-        conf = 0.5
-    conf = max(0.2, min(0.95, conf))
-
-    band = "low" if conf < 0.5 else "medium" if conf < 0.75 else "high"
-
-    justification = [
-        AiMaturityJustification(
-            signal=k,
-            weight=("high" if _WEIGHTS[k] >= 1.0 else "medium" if _WEIGHTS[k] >= 0.6 else "low"),
-            evidence=evidence[k],
-            contribution=round(contrib[k], 2),
-            caveat=None if contrib[k] > 0 else "absence of public signal is not absence of activity",
-        )
-        for k in _WEIGHTS
+def _score_named_ai_ml_leadership(record: dict[str, Any]) -> tuple[int, str, str]:
+    entry = jobposts.company_jobposts(record["domain"])
+    leaders = (entry or {}).get("ai_ml_leaders", []) if entry else []
+    # Also check Crunchbase leadership entries for ML-titles
+    crunchbase_titles = [
+        (leader.get("role") or "") for leader in (record.get("leadership") or [])
     ]
-
-    return AiMaturityScore(
-        crunchbase_uuid=record.uuid,
-        score=score_int,
-        confidence=round(conf, 2),
-        confidence_band=band,
-        justification=justification,
+    has_ai_leader_crunchbase = any(
+        title in ("head_of_ai", "chief_data_officer") for title in crunchbase_titles
     )
+    if leaders or has_ai_leader_crunchbase:
+        if leaders:
+            names = ", ".join(l.get("name", "?") + " (" + l.get("title", "?") + ")" for l in leaders)
+            return 3, f"Public AI/ML leadership named: {names}.", "high"
+        return 2, "AI/ML leadership named in Crunchbase (not corroborated on team page).", "medium"
+    return 0, "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.", "high"
+
+
+def _score_github_org_activity(record: dict[str, Any]) -> tuple[int, str, str]:
+    entry = jobposts.company_jobposts(record["domain"])
+    gh = (entry or {}).get("github_public_org", {}) if entry else {}
+    ai_repos = int(gh.get("ai_repos_recent", 0))
+    total = int(gh.get("total_repos", 0))
+    if ai_repos >= 3:
+        return 3, f"Public GitHub org has {ai_repos} recent AI/ML repos out of {total}.", "high"
+    if ai_repos >= 1:
+        return 2, f"Public GitHub org has {ai_repos} recent AI/ML repo(s).", "medium"
+    if total > 0:
+        return 0, f"Public GitHub org has {total} repos, none AI-related (absence is not proof).", "medium"
+    return 0, "No public GitHub org activity found.", "low"
+
+
+def _score_executive_commentary(record: dict[str, Any]) -> tuple[int, str, str]:
+    entry = jobposts.company_jobposts(record["domain"])
+    commentary = (entry or {}).get("exec_commentary_last_12m", []) if entry else []
+    if not commentary:
+        return 0, "No executive commentary on AI strategy in the last 12 months.", "medium"
+    if len(commentary) >= 2:
+        return 3, f"{len(commentary)} exec posts naming AI as strategic in last 12m.", "high"
+    return 2, f"One exec post on AI strategy ({commentary[0].get('title')}).", "medium"
+
+
+def _score_modern_data_ml_stack(record: dict[str, Any]) -> tuple[int, str, str]:
+    entry = jobposts.company_jobposts(record["domain"])
+    bw = (entry or {}).get("builtwith", []) if entry else []
+    mod_tools = {"databricks", "weights and biases", "vllm", "ray"}
+    present = [t for t in bw if t.lower() in mod_tools]
+    baseline = {"dbt", "snowflake"}
+    baseline_present = [t for t in bw if t.lower() in baseline]
+    if len(present) >= 2:
+        return 3, f"Modern ML-platform stack detected: {', '.join(present)}.", "high"
+    if present:
+        return 2, f"Some modern ML tooling detected: {', '.join(present)}.", "medium"
+    if baseline_present:
+        return 1, f"Modern-data stack detected: {', '.join(baseline_present)}. No ML-platform tools.", "high"
+    return 0, "No modern data/ML stack signal from BuiltWith/Wappalyzer.", "medium"
+
+
+def _score_strategic_communications(record: dict[str, Any]) -> tuple[int, str, str]:
+    # Without investor letters in seed data, use category signal as a weak proxy
+    cats = [c.lower() for c in (record.get("categories") or [])]
+    if "ai" in cats:
+        return 2, "Company categorized as AI in Crunchbase categories.", "medium"
+    return 0, "No strategic-communications signal found.", "low"
+
+
+_SCORERS = [
+    ("ai_adjacent_open_roles", _score_ai_adjacent_open_roles),
+    ("named_ai_ml_leadership", _score_named_ai_ml_leadership),
+    ("github_org_activity", _score_github_org_activity),
+    ("executive_commentary", _score_executive_commentary),
+    ("modern_data_ml_stack", _score_modern_data_ml_stack),
+    ("strategic_communications", _score_strategic_communications),
+]
+
+
+def score(record: dict[str, Any]) -> dict[str, Any]:
+    """Return {score:int, confidence:float, justifications:list} for a prospect."""
+    weights_cfg = config.get("ai_maturity.weights", {})
+    justifications: list[dict[str, Any]] = []
+    weighted_sum = 0.0
+    max_sum = 0.0
+    high_conf_high_weight_inputs = 0
+
+    for signal_name, scorer in _SCORERS:
+        strength, status, conf = scorer(record)
+        weight_name = weights_cfg.get(signal_name, "low")
+        weight_num = _WEIGHT_TO_NUM.get(weight_name, 1)
+
+        weighted_sum += strength * weight_num
+        max_sum += 3 * weight_num
+        if weight_name == "high" and conf == "high" and strength >= 2:
+            high_conf_high_weight_inputs += 1
+
+        justifications.append({
+            "signal": signal_name,
+            "status": status,
+            "weight": weight_name,
+            "confidence": conf,
+            "source_url": _justification_source_url(record, signal_name),
+        })
+
+    normalized = (weighted_sum / max_sum) * 3 if max_sum else 0.0
+    rounded = max(0, min(3, round(normalized)))
+
+    # confidence: grows with # high-weight high-conf inputs with strong strength
+    if high_conf_high_weight_inputs >= 2:
+        confidence = 0.85
+    elif high_conf_high_weight_inputs == 1:
+        confidence = 0.65
+    else:
+        confidence = 0.45
+
+    return {
+        "score": int(rounded),
+        "confidence": float(round(confidence, 2)),
+        "justifications": justifications,
+    }
+
+
+def _justification_source_url(record: dict[str, Any], signal: str) -> str | None:
+    entry = jobposts.company_jobposts(record["domain"])
+    if not entry:
+        return None
+    if signal == "ai_adjacent_open_roles":
+        # point at any builtin-sourced role
+        for role in entry.get("open_roles_today", []):
+            if role.get("source") == "builtin":
+                return f"https://builtin.com/company/{_slug(record.get('name',''))}/jobs"
+    if signal == "named_ai_ml_leadership":
+        leaders = entry.get("ai_ml_leaders", [])
+        if leaders:
+            return leaders[0].get("url")
+    if signal == "github_org_activity":
+        return (entry.get("github_public_org") or {}).get("url")
+    if signal == "executive_commentary":
+        posts = entry.get("exec_commentary_last_12m", [])
+        if posts:
+            return posts[0].get("url")
+    return None
+
+
+def _slug(s: str) -> str:
+    return "".join(c.lower() if c.isalnum() else "-" for c in s).strip("-")

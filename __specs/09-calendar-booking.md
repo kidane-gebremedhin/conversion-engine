@@ -1,126 +1,117 @@
-# 09 — Calendar Booking
+# 09 — Calendar Booking (Cal.com)
 
-**Source:** Challenge document — "The Production Stack" (Calendar row), "Act II — Required integrations".
+The calendar layer exists so the agent can end an engaged conversation with a booked discovery call and a context brief attached — the single biggest lever the agent has on discovery-to-proposal conversion.
 
-## 1. Provider
+## Setup
 
-**Cal.com self-hosted** via Docker Compose. Tenacious team calendars are **mocked** by program-provided sample calendars — the agent does not touch a real Tenacious lead's calendar during the challenge week.
+- **Provider**: **Cal.com self-hosted** via `docker compose up` from `infra/docker-compose.yml`.
+- **Rationale**: no credit card, no admin-API gate, and a local Cal.com instance is indistinguishable from a managed one for the challenge-week scope.
+- **Calendar fixtures**: program-provided mock calendars in `infra/cal_fixtures/` (downloaded after policy acknowledgement is signed). Booking against a real calendar during the challenge week is a policy violation.
 
-## 2. Local stack
+## Configuration (env)
 
-```yaml
-# docker-compose.yml (excerpt)
-services:
-  calcom:
-    image: calcom/cal.com:latest
-    env_file: .env.calcom
-    ports: ["3000:3000"]
-    depends_on: [postgres]
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: calcom
-      POSTGRES_USER: calcom
-      POSTGRES_PASSWORD: ${CALCOM_DB_PASSWORD}
-    volumes: [calcom-db-data:/var/lib/postgresql/data]
-volumes:
-  calcom-db-data: {}
+| Env var | Purpose |
+|---|---|
+| `CALCOM_BASE_URL` | e.g., `http://localhost:3000` in dev |
+| `CALCOM_API_KEY` | Admin API key for programmatic slot discovery |
+| `CALCOM_USERNAME` | Default event-type owner |
+| `CALCOM_EVENT_TYPE_DISCOVERY_15` | Slug for the 15-minute discovery-offer event |
+| `CALCOM_EVENT_TYPE_DISCOVERY_30` | Slug for the 30-minute discovery-scoping event |
+| `CALCOM_WEBHOOK_URL` | Booking-created webhook (agent endpoint) |
+| `CALCOM_WEBHOOK_SECRET` | HMAC secret |
+| `CALCOM_DEFAULT_DURATION_MINUTES` | Default when not specified |
+| `CALCOM_DEFAULT_DELIVERY_LEAD` | e.g., `arun@<domain>` (mock email) |
+
+## Event types
+
+Two event types created on Day 0 via `agent/calendar/client.py`:
+
+- **`discovery-15`** — 15 minutes, used in cold outreach when the ask is "15 minutes to walk through our model."
+- **`discovery-30`** — 30 minutes, used in engaged-reply flows when the ask is "a proper scoping conversation."
+
+The composer selects the duration based on `sequence_position`:
+
+- `cold_1`, `cold_2`, `curious` → 15-minute link.
+- `engaged`, `objection_handling_book` → 30-minute link.
+
+## Booking flow
+
+```
+Agent proposes time  ──▶  Composer includes Cal link with prospect timezone
+                                       │
+                                       ▼
+         Prospect clicks link, picks slot, submits name + email
+                                       │
+                                       ▼
+          Cal.com webhook POST /webhook/cal with booking payload
+                                       │
+                                       ▼
+         Agent.webhook_cal_booking() handles the event:
+         1. Verify HMAC signature
+         2. Look up HubSpot contact by email
+         3. Create HubSpot MEETING engagement + Deal
+         4. Render discovery_call_context_brief.md per schema
+         5. Post context brief as NOTE on Deal
+         6. Post context brief to the Cal.com event "additional notes" field
+         7. Send post-book confirmation email to prospect (routed through kill-switch)
+         8. Langfuse trace the booking event
 ```
 
-Boot: `docker compose up -d calcom postgres`. Cal.com admin at `http://localhost:3000`.
+## Discovery call context brief
 
-## 3. Event types
+Schema: [`schemas/discovery_call_context_brief.md`](../tenacious_sales_data/schemas/discovery_call_context_brief.md). The agent **must** fill every required section — the brief's grade is measured on completeness, not optionally filling sections.
 
-Three event types provisioned at setup:
+The context-brief synthesizer (`agent/calendar/context_brief.py`) consumes:
 
-| Event type | Duration | Buffer | Assignee | URL slug |
-|------------|----------|--------|----------|----------|
-| Segment 1/2 discovery | 30 min | 10 min pre/post | `delivery-lead-a` (mock) | `discovery-30` |
-| Segment 3 leadership call | 45 min | 15 min pre/post | `delivery-lead-b` (mock) | `discovery-45-leadership` |
-| Segment 4 technical scope | 60 min | 15 min pre/post | `delivery-lead-c` (mock) | `discovery-60-technical` |
+- `hiring_signal_brief.json`
+- `competitor_gap_brief.json`
+- `bench_summary.json`
+- Langfuse trace of the thread (for objections, commercial signals, urgency quotes)
+- LLM call with `seed/style_guide.md` + `seed/discovery_transcripts/*.md` as context (for Section 8 "suggested call structure")
 
-Event-type mapping is controlled by `config.calcom.event_types`.
+Output: a single markdown document attached to the Deal and the Cal event. **At most one scroll on a laptop screen** — longer briefs are skipped by humans; that defeats the purpose.
 
-## 4. Booking client
+The brief's **Section 10 — Agent confidence and unknowns** is mandatory. An agent that claims "high confidence on everything" signals it is not self-aware; the probe library includes a calibration check.
 
-```python
-# agent/integrations/calcom.py
+## Time-zone handling
 
-class CalcomClient:
-    def __init__(self, base_url: str, api_key: str): ...
+Every Cal link the composer emits includes `?timezone=<iana>` with the prospect's inferred timezone:
 
-    def available_slots(self, event_type_slug: str, *, 
-                        from_: datetime, to: datetime, 
-                        timezone: str) -> list[Slot]: ...
+- Crunchbase HQ country → primary IANA lookup.
+- Domain TLD → fallback (.co.uk → Europe/London, .de → Europe/Berlin, etc.).
+- `config.yaml > timezone.default` → last resort.
 
-    def book(self, *, event_type_slug: str, start: datetime, 
-             attendee_email: EmailStr, attendee_name: str, 
-             attendee_timezone: str, 
-             metadata: dict, 
-             context_brief_md: str) -> BookingResult: ...
+Scheduling edge cases the Act III probe library tests:
 
-    def cancel(self, booking_id: str, reason: str) -> None: ...
+- **DST boundaries** (North American DST starts second Sunday of March; EU DST last Sunday of March — they are misaligned by ~2 weeks).
+- **Asymmetric business hours** — proposing 6am local to a prospect in London while operating from East Africa.
+- **India +5:30** (not a target but appears in Crunchbase sector peers).
+- **Fractional offsets on non-ICS calendars** — a historical Cal.com bug surface.
 
-    def reschedule(self, booking_id: str, new_start: datetime) -> BookingResult: ...
-```
+The agent's time-proposal logic:
 
-`metadata` is passed through to Cal.com's webhook payload and stored on the booking record:
+1. Default slot suggestions fall in the prospect's 09:00–17:00 local window.
+2. At least one slot must fall in the **overlap band** (03:00–05:00 UTC overlap with Tenacious East Africa, configurable).
+3. Slot suggestions are emitted in the prospect's local time in the email body, with a UTC equivalent in parentheses.
 
-```json
-{
-  "crunchbase_uuid": "e4b1...",
-  "thread_id": "...",
-  "trace_id": "...",
-  "segment": 2,
-  "variant": "signal_grounded",
-  "draft": true
-}
-```
+## Post-book confirmation
 
-## 5. Context brief attachment
+The confirmation email (channel template: `post_book_confirmation.j2`) reaffirms:
 
-Every booking created by the agent attaches a **context brief** to the invite description. The brief is 150–250 words and includes:
+- Prospect name, date/time in prospect's local timezone.
+- Delivery lead who will be on the call.
+- One-line mention of what is attached ("a short context brief on your firm's hiring signal") — **not** the full brief, which is internal.
+- No marketing, no case-study name-drops.
 
-1. One-line company summary (sector, size, Crunchbase UUID).
-2. ICP segment and rationale.
-3. Hiring-signal brief headline (funding, velocity ratio, layoff, leadership change) with confidence bands.
-4. AI maturity score (0–3) with confidence band.
-5. Top-1 competitor gap practice with peer evidence links.
-6. Bench-match summary (which stacks the prospect needs that Tenacious bench has).
-7. One sentence of suggested first-question framing for the delivery lead.
-8. Kill-switch status and `draft: true` marker.
+## What the calendar integration must NOT do
 
-The brief is generated by `agent/integrations/calcom.py:build_context_brief()` from the cached JSON artifacts; it is deterministic given the same inputs.
+- Book against a real human calendar during the challenge week (fixtures only).
+- Embed the full context brief in the prospect-facing confirmation email. The context brief is an **internal** artifact for the delivery lead.
+- Propose a slot that falls outside the agent's current `available_slots` response from Cal.com (stale slot proposals break trust on the first touch).
+- Silently fall back to `config.yaml > timezone.default` without logging — the Langfuse trace must record which timezone-resolution path fired.
 
-## 6. Time-zone handling
+## Deliverables checkpoints
 
-Tenacious serves EU + US + East Africa; the prospect pool spans all three. Rules:
-
-- Always capture the prospect's inferred timezone on first reply (heuristic: HQ country from Crunchbase; override if the prospect explicitly states a timezone).
-- Slot offers in the outbound email are always in **the prospect's timezone**, annotated with UTC offset.
-- Cal.com booking is stored in UTC; rendered per-viewer.
-- DST edge cases: if the offered slot spans a DST transition in either party's zone, the agent offers an adjacent day.
-
-Covered by probe `scheduling_tz_dst.yaml` in [12-probe-library.md](12-probe-library.md).
-
-## 7. Inbound webhook
-
-- Endpoint: `POST /webhooks/calcom`.
-- Events handled: `BOOKING_CREATED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`.
-- On `BOOKING_CREATED`: transition thread to `BOOKED`, log CRM event, send `post_book_confirmation` email to the prospect, notify Tenacious lead (human).
-
-## 8. Kill-switch behaviour
-
-When `killswitch.enabled == false`:
-
-- Attendee email on every booking is rewritten to the **staff sink** (`config.killswitch.sink_email`) but metadata still carries the synthetic attendee identity.
-- The Cal.com booking is created on the **mock** calendar of a mock delivery lead — no human Tenacious lead is booked.
-- The `post_book_confirmation` email is likewise routed to the sink.
-
-## 9. Acceptance tests
-
-- `available_slots` returns ≥ 1 slot for the default event type within a 7-day window.
-- `book` attaches a context brief of 150–250 words containing all 8 required elements.
-- A booking request from a prospect in `Africa/Addis_Ababa` is rendered with correct EAT offsets and does not violate the delivery lead's working hours (08:00–19:00 local to delivery lead).
-- Cancellation via webhook transitions thread to `QUALIFIED` (re-schedulable) and preserves history.
-- When kill-switch is unset, the Cal.com booking's attendee email equals `config.killswitch.sink_email`, not the prospect's.
+- **Day 0**: `docker compose up` succeeds; a test booking flows end-to-end (create event type → book slot → confirmation email received); smoke test passes.
+- **Interim**: Cal.com booking screenshot shows one synthetic prospect's 15-minute discovery call booked end-to-end.
+- **Final (demo video)**: live show of the booking flow with the context brief visible in the Cal event and in HubSpot.

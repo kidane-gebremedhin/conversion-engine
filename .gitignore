@@ -1,23 +1,61 @@
+# Secrets and environment
 .env
-.venv/
+.env.local
+*.key
+*.pem
+
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 *.egg-info/
-dist/
-build/
+.venv/
+venv/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+dist/
+build/
 .coverage
 htmlcov/
+
+# Node
 node_modules/
+
+# Runs, briefs, traces (reproducible from code + data)
+eval/runs/
+eval/briefs/
+eval/tau2/
+method/held_out_traces.jsonl
+
+# Sealed held-out partition — MUST live outside the tree
+tau2_sealed_heldout/
+
+# Rendered artifacts
+memo/memo.pdf
+memo/evidence_snapshots/**/*.png
+memo/evidence_snapshots/**/*.jpg
+
+# Stretch artifacts (opt-in only)
+market_space/*.csv
+
+# Local-only sinks and caches
 data/briefs_cache/
 data/killswitch_audit.jsonl
 data/local_traces.jsonl
 data/sink/
 data/hubspot_local/
 data/calcom_local/
-seed/
-!seed/.gitkeep
-*.log
+data/crawl_counter.json
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+tenacious_sales_data

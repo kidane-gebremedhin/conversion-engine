@@ -1,276 +1,424 @@
 # =============================================================================
-# Conversion Engine — Application Config Template
+# Conversion Engine — config.yaml template
 # =============================================================================
-# Copy to `config.yaml` at repo root.
-# Secrets live in .env (see .env.example). This file holds tunables only.
-# Boot loads `config.yaml` then overlays `config.<CONVERGINE_ENV>.yaml`.
-# See __specs/18-configuration.md for loader semantics.
+# Operational knobs. Secrets, base URLs, and runtime toggles live in .env.
+# Numeric placeholders like ${ACV_MIN} are resolved at boot from the seed
+# files, which are the single source of truth for Tenacious internal numbers.
+#
+# See __specs/18-configuration.md for the full spec.
 # =============================================================================
 
-version: 1
 
 # -----------------------------------------------------------------------------
-# [1] LLM providers and models
-# -----------------------------------------------------------------------------
-llm:
-  providers:
-    openrouter:
-      base_url_env: OPENROUTER_BASE_URL
-      api_key_env: OPENROUTER_API_KEY
-      timeout_s: 60
-      max_retries: 3
-      concurrency: 2              # do not hammer the free tier
-    anthropic:
-      api_key_env: ANTHROPIC_API_KEY
-      timeout_s: 120
-    openai:
-      api_key_env: OPENAI_API_KEY
-      timeout_s: 120
-
-  models:
-    dev_tier:
-      primary:
-        provider: openrouter
-        name: qwen/qwen3-next-80b-a3b-instruct
-        max_output_tokens: 4096
-        prompt_cache: true
-      fallback:
-        provider: openrouter
-        name: deepseek/deepseek-chat-v3.2
-        max_output_tokens: 4096
-    eval_tier:
-      primary:
-        provider: anthropic
-        name: claude-sonnet-4-6
-        max_output_tokens: 8192
-      fallback:
-        provider: openai
-        name: gpt-5                # or the current GPT-5 class family
-        max_output_tokens: 8192
-
-  # Prices per 1k tokens — keep in sync with provider pricing for cost attribution.
-  prices:
-    qwen/qwen3-next-80b-a3b-instruct:    {input: 0.00014, output: 0.00060}
-    deepseek/deepseek-chat-v3.2:         {input: 0.00028, output: 0.00110}
-    claude-sonnet-4-6:                   {input: 0.00300, output: 0.01500}
-    gpt-5:                               {input: 0.00500, output: 0.01500}
-
-# -----------------------------------------------------------------------------
-# [2] Kill-switch (default unset)
-# -----------------------------------------------------------------------------
-killswitch:
-  enabled: false                  # DEFAULT UNSET — all outbound routes to sink
-  sink_email: "sink+convergine@staff-sandbox.tenacious.invalid"
-  sink_shortcode: "22222"
-  audit_log_path: "data/killswitch_audit.jsonl"
-  require_real_outbound_env: true # also requires CONVERGINE_ENABLE_REAL_OUTBOUND=1
-
-# -----------------------------------------------------------------------------
-# [3] Channels
-# -----------------------------------------------------------------------------
-channels:
-  hierarchy: [email, sms, voice]  # grading-fixed for Tenacious
-
-  email:
-    provider: resend
-    from_domain_env: RESEND_FROM_DOMAIN
-    from_address_env: RESEND_FROM_ADDRESS
-    webhook_path: /webhooks/email/reply
-    send_jitter_ms: 500
-    list_unsubscribe_header: true
-    draft_marker_header: X-Convergine-Draft
-    trace_header: X-Convergine-Trace-Id
-    variant_header: X-Convergine-Variant
-    segment_header: X-Convergine-Segment
-    templates_dir: agent/channels/email/templates
-
-  sms:
-    provider: africastalking
-    body_max_chars: 160
-    allow_only_in_states: [QUALIFIED, SCHEDULING, SMS_SCHEDULING]
-    opt_in_required: true
-    stop_keywords: [STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT]
-    webhook_path: /webhooks/sms/inbound
-
-  voice:
-    enabled: false                # bonus only — flip when attempting
-    webhook_url_env: VOICE_RIG_WEBHOOK_URL
-    keyword_prefix_env: VOICE_RIG_KEYWORD_PREFIX
-    allow_only_in_states: [BOOKED]
-
-# -----------------------------------------------------------------------------
-# [4] CRM — HubSpot
-# -----------------------------------------------------------------------------
-crm:
-  hubspot:
-    mcp_url_env: HUBSPOT_MCP_URL
-    token_env: HUBSPOT_PRIVATE_APP_TOKEN
-    rate_limit_per_10s: 100
-    retry_on: [429, 500, 502, 503, 504]
-    custom_properties:
-      company:
-        - convergine_crunchbase_uuid
-        - convergine_icp_segment
-        - convergine_icp_mode
-        - convergine_icp_confidence
-        - convergine_ai_maturity_score
-        - convergine_ai_maturity_confidence
-        - convergine_enrichment_timestamp
-        - convergine_brief_url
-        - convergine_gap_brief_url
-      contact:
-        - convergine_preferred_channel
-        - convergine_synthetic
-      deal:
-        - convergine_segment
-        - convergine_thread_id
-
-# -----------------------------------------------------------------------------
-# [5] Calendar — Cal.com
-# -----------------------------------------------------------------------------
-calendar:
-  calcom:
-    base_url_env: CALCOM_BASE_URL
-    api_key_env: CALCOM_API_KEY
-    webhook_secret_env: CALCOM_WEBHOOK_SECRET
-    webhook_path: /webhooks/calcom
-    event_types:
-      segment_1_or_2_discovery:
-        slug: discovery-30
-        duration_min: 30
-        buffer_pre_min: 10
-        buffer_post_min: 10
-      segment_3_leadership:
-        slug: discovery-45-leadership
-        duration_min: 45
-        buffer_pre_min: 15
-        buffer_post_min: 15
-      segment_4_technical:
-        slug: discovery-60-technical
-        duration_min: 60
-        buffer_pre_min: 15
-        buffer_post_min: 15
-    working_hours_delivery_lead:
-      start_local: "08:00"
-      end_local:   "19:00"
-
-# -----------------------------------------------------------------------------
-# [6] Observability — Langfuse
-# -----------------------------------------------------------------------------
-observability:
-  langfuse:
-    host_env: LANGFUSE_HOST
-    public_key_env: LANGFUSE_PUBLIC_KEY
-    secret_key_env: LANGFUSE_SECRET_KEY
-    project_env: LANGFUSE_PROJECT
-    flush_interval_s: 5
-  local_jsonl_fallback: data/local_traces.jsonl
-  cost_pathology_threshold_usd_per_prospect: 0.20
-
-# -----------------------------------------------------------------------------
-# [7] Enrichment pipeline thresholds (see __specs/05)
-# -----------------------------------------------------------------------------
-enrichment:
-  funding_recency_days_max: 180
-  layoff_recency_days_max: 120
-  leadership_change_recency_days_max: 90
-  job_post_velocity_window_days: 60
-  aggressive_hiring:
-    min_open_roles: 5
-    min_ratio: 2.0
-  confidence_bands:
-    low_max_exclusive: 0.50
-    medium_max_exclusive: 0.75
-  brief_cache_ttl_h: 24
-  live_crawl_company_cap: 200    # per challenge rules
-  user_agent: "ConvergineResearchBot/0.1 (+mailto:research@convergine.invalid)"
-  respect_robots_txt: true
-
-# -----------------------------------------------------------------------------
-# [8] ICP classifier (see __specs/03)
+# ICP classification
 # -----------------------------------------------------------------------------
 icp:
-  confidence_threshold: 0.55
-  margin_threshold: 0.10
-  segment_4_ai_maturity_gate: 2
-  abstention_variant: exploratory
-  segments_file: agent/icp/segments.yaml
+  abstain_threshold: 0.60
+  segment_1:
+    funding_window_days: 180
+    funding_min_usd: 5_000_000
+    funding_max_usd: 30_000_000
+    headcount_min: 15
+    headcount_max: 80
+    min_open_eng_roles: 5
+    disqualifier_layoff_window_days: 90
+    disqualifier_layoff_min_pct: 0.15
+    supported_hq_countries: [US, CA, GB, DE, FR, NL, IE, SE, DK, NO, FI]
+  segment_2:
+    layoff_window_days: 120
+    restructure_press_window_days: 90
+    headcount_min: 200
+    headcount_max: 2000
+    min_open_eng_roles_post_event: 3
+    disqualifier_layoff_pct_max: 0.40
+  segment_3:
+    leadership_change_window_days: 90
+    headcount_min: 50
+    headcount_max: 500
+    roles: [cto, vp_engineering]
+    disqualifier_interim_terms: [interim, acting]
+  segment_4:
+    specialist_req_min_days_open: 60
+    ai_maturity_min_required: 2
+
 
 # -----------------------------------------------------------------------------
-# [9] τ²-Bench harness (see __specs/11)
+# Funding / layoffs / leadership enrichment windows
 # -----------------------------------------------------------------------------
-eval:
-  tau2_bench:
-    repo: https://github.com/sierra-research/tau2-bench
-    pinned_tag: "SET_AT_DAY_0"
-    domain_retail_version: "SET_AT_DAY_0"
-    domain_telecom_version: "SET_AT_DAY_0"
-    dev_slice_size: 30
-    held_out_slice_size: 20
-    trials_per_slice: 5
-    seed: 42
-    dev_tier_model: qwen/qwen3-next-80b-a3b-instruct
-    eval_tier_model: claude-sonnet-4-6
-    budget_dev_usd: 4.00
-    budget_eval_usd: 12.00
+funding:
+  window_days: 180
+  min_usd: 5_000_000
+  max_usd: 30_000_000
+
+layoffs:
+  window_days: 120
+  csv_date_format: "%Y-%m-%d"
+
+leadership:
+  window_days: 90
+  sources_priority: [crunchbase_people, press_release, linkedin_public]
+
 
 # -----------------------------------------------------------------------------
-# [10] Act IV mechanism (see __specs/13)
+# Job-post velocity
 # -----------------------------------------------------------------------------
-method:
-  name: signal_confidence_aware_phrasing   # baseline | signal_confidence_aware_phrasing | bench_gated | icp_abstention | tone_preservation | channel_handoff
-  hyperparameters:
-    tone_regenerate_max_retries: 2
-    validator_model: dev_tier
-    confidence_thresholds:
-      low_max_exclusive: 0.50
-      medium_max_exclusive: 0.75
-  ablations:
-    - id: no_regeneration
-      overrides: {tone_regenerate_max_retries: 0}
-    - id: tighter_thresholds
-      overrides: {confidence_thresholds: {low_max_exclusive: 0.40, medium_max_exclusive: 0.65}}
-    - id: eval_tier_validator
-      overrides: {validator_model: eval_tier}
-  stat_test:
-    resamples: 10000
-    alpha: 0.05
-  automated_optimization_baseline: gepa    # gepa | autoagent
+jobposts:
+  min_roles_for_valid_signal: 5
+  velocity_thresholds:
+    tripled_or_more: 3.0
+    doubled: 2.0
+    increased_modestly: 1.25
+    flat_low: 0.8
+    flat_high: 1.25
+  ai_adjacent_titles:
+    - ml engineer
+    - machine learning engineer
+    - applied scientist
+    - llm engineer
+    - ai product manager
+    - data platform engineer
+    - mlops engineer
+    - ai engineer
+    - research scientist (ai)
+    - nlp engineer
+    - computer vision engineer
+    - chief scientist
+
 
 # -----------------------------------------------------------------------------
-# [11] Market space (see __specs/15) — optional stretch
+# AI-maturity scoring
+# -----------------------------------------------------------------------------
+ai_maturity:
+  weights:
+    ai_adjacent_open_roles: high
+    named_ai_ml_leadership: high
+    github_org_activity: medium
+    executive_commentary: medium
+    modern_data_ml_stack: low
+    strategic_communications: low
+  numeric_weights:
+    high: 3
+    medium: 2
+    low: 1
+  confidence_thresholds:
+    high_min_signals: 2     # ≥2 high-weight inputs with strong evidence
+    medium_min_signals: 3
+  ai_ml_leadership_titles:
+    - head of ai
+    - head of ml
+    - head of data
+    - vp data
+    - vp ai
+    - chief scientist
+    - chief ai officer
+    - chief data officer
+
+
+# -----------------------------------------------------------------------------
+# Bench
+# -----------------------------------------------------------------------------
+bench:
+  stacks: [python, go, data, ml, infra, frontend, fullstack_nestjs]
+  # Counts resolved at boot from seed/bench_summary.json — never hard-coded.
+  summary_source: tenacious_sales_data/seed/bench_summary.json
+
+
+# -----------------------------------------------------------------------------
+# Competitor gap brief
+# -----------------------------------------------------------------------------
+competitor_gap:
+  peers_min: 5
+  peers_max: 10
+  gap_findings_min: 1
+  gap_findings_max: 3
+  peer_evidence_min: 2
+  sub_niche_overrides:
+    advertising: [adtech_ssp, adtech_dsp, adtech_verification]
+    fintech: [lending, payments, infra]
+    loyalty: [b2b2c_loyalty, airline_loyalty, coalition_loyalty]
+  tenacious_competitor_case_study_domains:
+    - andela.com
+    - turing.com
+    - revelo.com
+    - toptal.com
+
+
+# -----------------------------------------------------------------------------
+# Composer (cold / warm / reengagement)
+# -----------------------------------------------------------------------------
+composer:
+  cold:
+    email_1_max_words: 120
+    email_2_max_words: 100
+    email_3_max_words: 70
+    subject_max_chars: 60
+    subject_first_word_allowed: [Context, Note, Request, Congrats, Question, Follow-up]
+    subject_first_word_forbidden: [Quick, Just, Hey, Checking]
+  warm:
+    engaged_max_words: 150
+    curious_max_words: 90
+    soft_defer_max_words: 60
+  reengagement:
+    email_1_max_words: 100
+    email_2_max_words: 50
+    email_3_max_words: 40
+    trigger_days_after_last_agent_msg: 10
+    email_2_delay_days: 7
+    email_3_delay_days: 14
+    max_reengagement_every_days: 45
+  disallowed_phrases:
+    - "just following up"
+    - "just circling back"
+    - "circling back"
+    - "hope this finds you well"
+    - "hope you're doing well"
+    - "wanted to touch base"
+    - "touching base"
+    - "top talent"
+    - "world-class"
+    - "A-players"
+    - "a-players"
+    - "rockstar"
+    - "ninja"
+    - "hey there"
+    - "quick question"
+
+
+# -----------------------------------------------------------------------------
+# Tone preservation check
+# -----------------------------------------------------------------------------
+tone_check:
+  markers: [direct, grounded, honest, professional, non_condescending]
+  per_marker_min_score: 4          # 1–5 scale, regenerate if any <4
+  max_regenerations: 1             # one retry, then flag for human
+  flag_for_human_threshold: 3      # any marker <3 on regen → human review
+
+
+# -----------------------------------------------------------------------------
+# Reply classifier
+# -----------------------------------------------------------------------------
+reply:
+  ambiguous_threshold: 0.70
+  classes: [engaged, curious, hard_no, soft_defer, objection, ambiguous]
+  opt_out_patterns:
+    - "not interested"
+    - "please remove"
+    - "stop emailing"
+    - "unsubscribe"
+    - "take me off"
+
+
+# -----------------------------------------------------------------------------
+# Handoff to human
+# -----------------------------------------------------------------------------
+handoff:
+  default_lead_email: arun@<configured-domain>
+  c_level_headcount_threshold: 2000
+  message_template: "Our delivery lead will follow up within 24 hours with a specific answer."
+  regulatory_keywords: [MSA, DPA, BAA, SOW, NDA, DPIA, GDPR, HIPAA]
+
+
+# -----------------------------------------------------------------------------
+# Scraper (policy-enforced)
+# -----------------------------------------------------------------------------
+scraper:
+  min_delay_between_requests_s: 2
+  max_concurrent_tabs_per_domain: 3
+  respect_robots_txt: true
+  robots_txt_cache_hours: 24
+  crawl_cap_per_week: 200
+  crawl_counter_path: data/crawl_counter.json
+  user_agent_env_var: SCRAPER_USER_AGENT
+
+
+# -----------------------------------------------------------------------------
+# Budgets (USD)
+# -----------------------------------------------------------------------------
+budgets:
+  dev_llm_max_usd: 4.0
+  eval_llm_max_usd: 12.0
+  total_llm_max_usd: 20.0
+  target_cost_per_qualified_lead_usd: 5.0
+  cpl_penalty_threshold_usd: 8.0
+
+
+# -----------------------------------------------------------------------------
+# Time zones
+# -----------------------------------------------------------------------------
+timezone:
+  default: America/New_York
+  tenacious_hq: Africa/Addis_Ababa
+  overlap_min_hours_per_day: 3
+
+
+# -----------------------------------------------------------------------------
+# Observability (Langfuse)
+# -----------------------------------------------------------------------------
+observability:
+  allowed_attributes:
+    - prospect.domain
+    - prospect.segment
+    - prospect.ai_maturity_score
+    - brief.hiring_signal_generated_at
+    - brief.competitor_gap_generated_at
+    - cost.usd
+    - trace.total_cost_usd
+    - tier
+    - kill_switch.state
+    - tone_check.scores
+    - honesty_flags
+    - tau2.task_id
+    - tau2.partition
+  buffer_max_spans: 1000
+  retry_on_network_error: true
+  retry_max_attempts: 3
+
+
+# -----------------------------------------------------------------------------
+# LLM rate cards (USD per 1M tokens)
+# -----------------------------------------------------------------------------
+# Update these when a provider publishes new pricing. Never hard-coded elsewhere.
+llm:
+  rate_cards:
+    qwen/qwen3-next-80b-a3b:
+      input_per_1m_usd: 0.20
+      output_per_1m_usd: 0.80
+    deepseek/deepseek-v3.2:
+      input_per_1m_usd: 0.27
+      output_per_1m_usd: 1.10
+    anthropic/claude-sonnet-4.6:
+      input_per_1m_usd: 3.00
+      output_per_1m_usd: 15.00
+    openai/gpt-5:
+      input_per_1m_usd: 5.00
+      output_per_1m_usd: 15.00
+
+
+# -----------------------------------------------------------------------------
+# τ²-Bench harness
+# -----------------------------------------------------------------------------
+tau2:
+  pinned_sha: REPLACE_WITH_PINNED_COMMIT_SHA
+  retail_dev_size: 30
+  retail_heldout_size: 20
+  trials_per_run: 5
+  seeds: [42, 43, 44, 45, 46]
+  ci_method: bootstrap_percentile
+  ci_level: 0.95
+  delta_a_alpha: 0.05
+
+
+# -----------------------------------------------------------------------------
+# Market-space map (distinguished-tier; disabled by default)
 # -----------------------------------------------------------------------------
 market_space:
   enabled: false
-  weights:
-    funding_12mo: 0.40
-    hiring_velocity: 0.25
+  oxygen_score_weights:
+    funding_12mo: 0.30
+    hiring_velocity: 0.30
+    ai_readiness: 0.20
     bench_match: 0.20
-    ai_readiness_signal: 0.15
-  hand_label_sample_size_min: 30
-  size_bands: ["1-10", "11-50", "51-100", "101-500", "501-2000", "2000+"]
+  validation_sample_size: 40
+  min_cell_population: 5
+
 
 # -----------------------------------------------------------------------------
-# [12] Cost targets (referenced by memo and cost-quality grading)
+# Memo typography
 # -----------------------------------------------------------------------------
-costs:
-  cost_per_qualified_lead_usd_target: 5.00
-  cost_per_qualified_lead_usd_penalty_above: 8.00
-  trainee_weekly_budget_usd: 20.00
+memo:
+  typography:
+    font_family: "Inter, Helvetica, sans-serif"
+    body_size_pt: 10
+    line_height: 1.35
+    margin_in: 0.6
+  page_count_strict: 2            # fail hard if more or less
+
 
 # -----------------------------------------------------------------------------
-# [13] Style / tone
+# Tenacious numbers (mirrored from seed files — source of truth)
 # -----------------------------------------------------------------------------
-style:
-  style_guide_path: seed/style_guide.md
-  banned_phrases:
-    - "offshore"            # prefer "augmented engineering" per style guide
-    - "aggressive hiring"   # unless qualifies_for_aggressive_hiring_claim == true
-  max_gap_practices_in_cold_email: 1
+# These values are resolved at boot from tenacious_sales_data/seed/*.md files.
+# Do NOT edit them here. A boot-time parser replaces ${...} placeholders.
+tenacious:
+  as_of_date: "2026-04-21"
+  acv:
+    talent_outsourcing_min_usd: ${ACV_MIN}
+    talent_outsourcing_max_usd: ${ACV_MAX}
+    project_consulting_min_usd: ${PROJECT_ACV_MIN}
+    project_consulting_max_usd: ${PROJECT_ACV_MAX}
+    training_min_usd: ${TRAINING_ACV_MIN}
+    training_max_usd: ${TRAINING_ACV_MAX}
+  rates:
+    junior_monthly_usd: ${JUNIOR_MONTHLY_RATE}
+    mid_monthly_usd: ${MID_MONTHLY_RATE}
+    senior_monthly_usd: ${SENIOR_MONTHLY_RATE}
+    manager_monthly_usd: ${MANAGER_MONTHLY_RATE}
+    junior_hourly_usd: ${JUNIOR_HOURLY_RATE}
+    senior_hourly_usd: ${SENIOR_HOURLY_RATE}
+    blended_hourly_usd: ${BLENDED_HOURLY_RATE}
+    weekly_fractional_usd: ${WEEKLY_RATE}
+    training_per_person_usd: ${TRAINING_PER_PERSON}
+    workshop_price_usd: ${WORKSHOP_PRICE}
+  project_pricing:
+    starter_floor_usd: ${PROJECT_ACV_MIN}
+    small_tool_project_usd: ${SMALL_TOOL_PROJECT}
+    mvp_project_usd: ${MVP_PROJECT}
+    mid_system_min_usd: ${MID_SYSTEM_MIN}
+    mid_system_max_usd: ${MID_SYSTEM_MAX}
+    large_platform_min_usd: ${LARGE_PLATFORM_MIN}
+    large_platform_max_usd: ${LARGE_PLATFORM_MAX}
+  conversions:
+    cold_reply_baseline_min: 0.01
+    cold_reply_baseline_max: 0.03
+    cold_reply_top_quartile_min: 0.07
+    cold_reply_top_quartile_max: 0.12
+    discovery_to_proposal_min: 0.30
+    discovery_to_proposal_max: 0.50
+    proposal_to_close_min: 0.20
+    proposal_to_close_max: 0.30
+    stalled_thread_rate_current: 0.35   # midpoint of 30–40%
+    tau2_retail_ceiling: 0.42
+  operational:
+    sdr_weekly_touches_target: 60
+    time_to_deploy_days_median: 10
+    overlap_hours_per_day_min: 3
+    overlap_hours_per_day_max: 5
+    eng_minimum_months: 1
+    extension_block_weeks: 2
+  team:
+    women_engineers_pct: 0.33
+    african_engineers_pct: 1.00
+    yoy_growth_rate: 5.20
+    current_paid_engagements: 9
+    current_deployed_engineers: 26
+    bench_ready_within_2_weeks: 60
+
 
 # -----------------------------------------------------------------------------
-# [14] Bench
+# Prompts and templates (relative paths)
 # -----------------------------------------------------------------------------
-bench:
-  summary_path: seed/bench_summary.yaml
-  hard_gate_send_on_mismatch: true
+prompts:
+  classifier: agent/prompts/classifier.txt
+  composer_segment_1: agent/prompts/composer_segment_1.txt
+  composer_segment_2: agent/prompts/composer_segment_2.txt
+  composer_segment_3: agent/prompts/composer_segment_3.txt
+  composer_segment_4: agent/prompts/composer_segment_4.txt
+  composer_abstain: agent/prompts/composer_abstain.txt
+  reply_classifier: agent/prompts/reply_classifier.txt
+  reply_engaged: agent/prompts/reply_engaged.txt
+  reply_curious: agent/prompts/reply_curious.txt
+  reply_objection: agent/prompts/reply_objection.txt
+  reply_soft_defer: agent/prompts/reply_soft_defer.txt
+  tone_preservation: agent/prompts/tone_preservation.txt
+  context_brief_synthesizer: agent/prompts/context_brief_synthesizer.txt
+
+templates:
+  email:
+    cold_signal_grounded: agent/channels/email/templates/cold_signal_grounded.j2
+    cold_exploratory: agent/channels/email/templates/cold_exploratory.j2
+    nurture_1: agent/channels/email/templates/nurture_1.j2
+    nurture_2: agent/channels/email/templates/nurture_2.j2
+    nurture_3: agent/channels/email/templates/nurture_3.j2
+    scheduling_offer: agent/channels/email/templates/scheduling_offer.j2
+    post_book_confirmation: agent/channels/email/templates/post_book_confirmation.j2
+    handoff_human: agent/channels/email/templates/handoff_human.j2

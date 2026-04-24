@@ -1,0 +1,73 @@
+# Cal.com self-hosted for local discovery-call booking.
+#
+# Runs a Postgres + Cal.com container pair with a dedicated migration
+# init step. The default `calcom/cal.com` image has a known ordering
+# bug where scripts/seed-app-store.ts runs before Prisma's
+# `migrate deploy`, producing "table public.App does not exist" errors
+# and leaving the app-store unseeded. We fix that by adding a
+# `calcom-migrate` one-shot container that runs migrations on a healthy
+# database, then letting the main service start after it exits
+# cleanly.
+#
+# No secrets live here — edit .env.calcom with NEXTAUTH_SECRET and
+# CALENDSO_ENCRYPTION_KEY before the first `docker compose up`.
+#
+# See __specs/09-calendar-booking.md.
+
+services:
+  calcom-db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: calcom
+      POSTGRES_PASSWORD: calcom
+      POSTGRES_DB: calcom
+    volumes:
+      - calcom-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calcom -d calcom"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Runs `prisma migrate deploy` against a healthy db, then exits.
+  # The main calcom service depends on this completing successfully
+  # so the App / User / Booking tables exist before the web app's
+  # own seed-app-store.ts tries to read them.
+  calcom-migrate:
+    image: calcom/cal.com:latest
+    depends_on:
+      calcom-db:
+        condition: service_healthy
+    env_file:
+      - .env.calcom
+    environment:
+      DATABASE_URL: postgresql://calcom:calcom@calcom-db:5432/calcom
+      DATABASE_DIRECT_URL: postgresql://calcom:calcom@calcom-db:5432/calcom
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "cd /calcom && yarn workspace @calcom/prisma db-deploy"
+    restart: "no"
+
+  calcom:
+    image: calcom/cal.com:latest
+    restart: unless-stopped
+    depends_on:
+      calcom-db:
+        condition: service_healthy
+      calcom-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env.calcom
+    environment:
+      DATABASE_URL: postgresql://calcom:calcom@calcom-db:5432/calcom
+      DATABASE_DIRECT_URL: postgresql://calcom:calcom@calcom-db:5432/calcom
+      NEXT_PUBLIC_WEBAPP_URL: http://localhost:3000
+      NEXTAUTH_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  calcom-db-data:

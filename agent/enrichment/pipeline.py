@@ -1,209 +1,285 @@
-"""Enrichment pipeline orchestrator — emits the three JSON artifacts.
+"""Enrichment pipeline DAG — composes firmographics → signals → briefs.
 
-Outputs to `data/briefs_cache/<crunchbase_uuid>/`:
-  - hiring_signal_brief.json
-  - ai_maturity_score.json
-  - competitor_gap_brief.json
+One entry point: `enrich(domain)` → (HiringSignalBrief, CompetitorGapBrief|None).
+Each adapter appends a DataSourceCheck to the brief's audit trail so the
+evidence graph in the memo can trace every claim to a source.
 
-Also emits `icp_classification.json` via the classifier (kept in this module
-so the artifact bundle per prospect is one-shot).
+See __specs/05-signal-enrichment-pipeline.md.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
-import pathlib
-import time
-from dataclasses import dataclass
-from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
-from agent import tracing
+from agent.config import REPO_ROOT, config
 from agent.enrichment import (
-    ai_maturity as ai_maturity_mod,
+    ai_maturity,
+    bench,
     competitor_gap,
     crunchbase,
     jobposts,
     layoffs,
     leadership,
-    techstack,
+    tech_stack,
 )
-from agent.state import (
-    AiMaturityScore,
+from agent.enrichment.briefs import (
+    AiMaturity,
+    AiMaturityJustification,
+    AiSignal,
+    BenchToBriefMatch,
+    BuyingWindowSignals,
     CompetitorGapBrief,
-    CrunchbaseRecord,
+    Confidence,
+    DataSourceCheck,
+    FundingEvent,
+    FundingStage,
     HiringSignalBrief,
-    IcpClassification,
+    HiringVelocity,
+    HonestyFlag,
+    LayoffEvent,
+    LeadershipChange,
+    LeadershipRole,
+    Segment,
+    SourceStatus,
+    VelocityLabel,
+    Weight,
 )
+from agent.observability.langfuse import span, new_trace
 
 
-_CACHE = pathlib.Path("data/briefs_cache")
-_TTL_SECONDS = 24 * 3600
+class EnrichmentError(RuntimeError):
+    """Raised when a domain is not in the Crunchbase allowlist."""
 
 
-@dataclass
-class EnrichmentResult:
-    brief: HiringSignalBrief
-    maturity: AiMaturityScore
-    gap: CompetitorGapBrief
-    icp: IcpClassification
-
-
-def enrich(crunchbase_uuid: str, *, force: bool = False, today: date | None = None) -> EnrichmentResult:
-    from agent.icp.classifier import classify
-
-    cache_dir = _CACHE / crunchbase_uuid
-    if not force and _cache_fresh(cache_dir):
-        with tracing.span("enrich.cache_hit", crunchbase_uuid=crunchbase_uuid):
-            return _from_cache(cache_dir)
-
-    with tracing.span("enrich.full", crunchbase_uuid=crunchbase_uuid):
-        record = crunchbase.by_uuid(crunchbase_uuid)
-        if record is None:
-            raise KeyError(f"crunchbase_uuid not found: {crunchbase_uuid}")
-
-        today = today or date.today()
-
-        with tracing.span("enrich.funding"):
-            funding_events = crunchbase.funding_events(crunchbase_uuid, today=today)
-        with tracing.span("enrich.jobposts"):
-            velocity = jobposts.velocity(record.domain or "")
-        with tracing.span("enrich.layoffs"):
-            layoff_events = layoffs.find_by_company(record.name, today=today)
-        with tracing.span("enrich.leadership"):
-            lead = leadership.detect(crunchbase_uuid, today=today)
-        with tracing.span("enrich.techstack"):
-            stack = techstack.fetch(record.domain or "")
-        with tracing.span("enrich.ai_maturity"):
-            maturity = ai_maturity_mod.score(
-                record,
-                ai_adj_fraction=velocity.ai_adjacent_fraction,
-                open_roles_now=velocity.open_roles_now,
-                ai_leadership_title=(lead.role if lead and "AI" in lead.role else None),
-                stack_items=stack["items"],
-                stack_bench_matches=stack["bench_matches"],
-                github_activity=0.3,
-                exec_commentary=0.0,
-            )
-        with tracing.span("enrich.competitor_gap"):
-            gap = competitor_gap.build(record, maturity=maturity)
-
-        brief = _build_brief(
-            record,
-            funding_events=funding_events,
-            velocity=velocity,
-            layoff_events=layoff_events,
-            leadership_change=lead,
-            stack=stack,
-            today=today,
-        )
-        icp = classify(brief, maturity=maturity)
-
-        _write_cache(cache_dir, brief=brief, maturity=maturity, gap=gap, icp=icp)
-
-        return EnrichmentResult(brief=brief, maturity=maturity, gap=gap, icp=icp)
-
-
-# --------------------------------------------------------------------------- #
-
-def _build_brief(
-    record: CrunchbaseRecord,
+def enrich(
+    domain: str,
     *,
-    funding_events,
-    velocity,
-    layoff_events,
-    leadership_change,
-    stack,
-    today: date,
-) -> HiringSignalBrief:
-    funding_block: dict[str, Any] = {"confidence": 0.0, "evidence": []}
-    if funding_events:
-        f = funding_events[0]
-        funding_block = {
-            "latest_round": f.round_type,
-            "amount_usd": f.amount_usd,
-            "date": f.announced_on.isoformat(),
-            "recency_days": (today - f.announced_on).days,
-            "confidence": 0.9,
-            "evidence": [{"source": "crunchbase", "url": f.source_url or ""}],
-        }
+    write_to: str | Path | None = None,
+) -> tuple[HiringSignalBrief, CompetitorGapBrief | None]:
+    """Run the full enrichment DAG for one prospect domain.
 
-    layoff_block: dict[str, Any]
-    if layoff_events:
-        ly = layoff_events[0]
-        layoff_block = {
-            "detected": True,
-            "date": ly.date.isoformat(),
-            "headcount": ly.headcount,
-            "percentage": ly.percentage,
-            "recency_days": (today - ly.date).days,
-            "confidence": 0.85,
-            "evidence": [{"source": "layoffs.fyi", "url": ly.source_url or ""}],
-        }
-    else:
-        layoff_block = {"detected": False, "confidence": 0.9, "evidence": []}
+    If `write_to` is set, writes the briefs to
+    `<write_to>/hiring_signal_brief.json` and `<write_to>/competitor_gap_brief.json`.
+    """
+    trace = new_trace(name="enrichment.run", attributes={"prospect.domain": domain})
 
-    leadership_block: dict[str, Any]
-    if leadership_change:
-        leadership_block = {
-            "detected": True,
-            "role": leadership_change.role,
-            "name": leadership_change.name,
-            "recency_days": (today - leadership_change.start_date).days,
-            "confidence": 0.8,
-            "evidence": [{"source": "press", "url": leadership_change.source_url or ""}],
-        }
-    else:
-        leadership_block = {"detected": False, "confidence": 0.7, "evidence": []}
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 1: firmographics (Crunchbase)
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.crunchbase_lookup", trace=trace) as s:
+        record = crunchbase.lookup_by_domain(domain)
+        s["present"] = bool(record)
+    if not record:
+        raise EnrichmentError(
+            f"No Crunchbase record for domain {domain!r}. "
+            "The pipeline refuses to outreach a domain without a firmographic anchor."
+        )
 
-    return HiringSignalBrief(
-        crunchbase_uuid=record.uuid,
-        company={
-            "name": record.name,
-            "domain": record.domain,
-            "country": record.country,
-            "industries": record.industries,
-            "employee_count_range": record.employee_count_range,
-            "founded": record.founded_on.year if record.founded_on else None,
-        },
-        signals={
-            "funding": funding_block,
-            "job_post_velocity": velocity.model_dump(),
-            "layoff": layoff_block,
-            "leadership_change": leadership_block,
-            "tech_stack": stack,
-        },
+    source_checks: list[DataSourceCheck] = [
+        DataSourceCheck(
+            source="crunchbase_odm",
+            status=SourceStatus.SUCCESS,
+            fetched_at=dt.datetime.now(dt.timezone.utc),
+        )
+    ]
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 2: hiring velocity (job posts)
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.jobposts", trace=trace) as s:
+        today_count, ago_count = jobposts.open_roles_counts(domain)
+        label, conf = jobposts.velocity_label_from_counts(today_count, ago_count)
+        sources = jobposts.sources_used(domain)
+        s["open_today"] = today_count
+        s["open_60d_ago"] = ago_count
+        s["label"] = label
+    velocity = HiringVelocity(
+        open_roles_today=today_count,
+        open_roles_60_days_ago=ago_count,
+        velocity_label=VelocityLabel(label),
+        signal_confidence=conf,
+        sources=sources,
+    )
+    source_checks.append(DataSourceCheck(
+        source="job_posts_snapshot",
+        status=SourceStatus.SUCCESS if today_count or ago_count else SourceStatus.NO_DATA,
+        fetched_at=jobposts.last_fetched_at(),
+    ))
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 3: layoffs
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.layoffs", trace=trace) as s:
+        layoff = layoffs.within_window(record.get("name", ""), window_days=int(config.get("layoffs.window_days", 120)))
+        s["detected"] = bool(layoff)
+    layoff_event = LayoffEvent(
+        detected=bool(layoff),
+        date=layoff["date"] if layoff else None,  # type: ignore[index]
+        headcount_reduction=int(layoff["headcount_reduction"]) if layoff else None,  # type: ignore[index]
+        percentage_cut=float(layoff["percentage_cut"]) if layoff else None,  # type: ignore[index]
+        source_url=str(layoff["source_url"]) if layoff else None,  # type: ignore[index]
+    )
+    source_checks.append(DataSourceCheck(
+        source="layoffs_fyi",
+        status=SourceStatus.SUCCESS if layoff else SourceStatus.NO_DATA,
+        fetched_at=dt.datetime.now(dt.timezone.utc),
+    ))
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 4: leadership
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.leadership", trace=trace) as s:
+        lead = leadership.detect(record)
+        s["detected"] = bool(lead)
+    leadership_change = LeadershipChange(
+        detected=bool(lead),
+        role=LeadershipRole(lead["role"]) if lead else None,
+        new_leader_name=lead["new_leader_name"] if lead else None,
+        started_at=lead["started_at"] if lead else None,
+        source_url=lead["source_url"] if lead else None,
     )
 
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 5: AI-maturity scoring
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.ai_maturity", trace=trace) as s:
+        mat = ai_maturity.score(record)
+        s["score"] = mat["score"]
+    justs: list[AiMaturityJustification] = []
+    for j in mat["justifications"]:
+        try:
+            sig = AiSignal(j["signal"])
+        except ValueError:
+            continue
+        try:
+            w = Weight(j["weight"])
+        except ValueError:
+            w = Weight.LOW
+        try:
+            c = Confidence(j["confidence"])
+        except ValueError:
+            c = Confidence.LOW
+        justs.append(AiMaturityJustification(
+            signal=sig, status=j["status"], weight=w, confidence=c,
+            source_url=j.get("source_url"),
+        ))
+    ai = AiMaturity(
+        score=int(mat["score"]),
+        confidence=float(mat["confidence"]),
+        justifications=justs,
+    )
 
-# --------------------------------------------------------------------------- #
-# Cache
-# --------------------------------------------------------------------------- #
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 6: tech stack + bench match
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.tech_stack", trace=trace) as s:
+        tokens, stacks, inferred_not_confirmed = tech_stack.infer_stacks(record)
+        s["stacks"] = stacks
+    bench_match_d = bench.match(stacks)
+    bench_match = BenchToBriefMatch(
+        required_stacks=bench_match_d["required_stacks"],
+        bench_available=bench_match_d["bench_available"],
+        gaps=bench_match_d["gaps"],
+    )
 
-def _cache_fresh(cache_dir: pathlib.Path) -> bool:
-    mark = cache_dir / "hiring_signal_brief.json"
-    if not mark.exists():
-        return False
-    return (time.time() - mark.stat().st_mtime) < _TTL_SECONDS
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 7: funding event
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.funding", trace=trace) as s:
+        funding = crunchbase.recent_funding_event(record, window_days=int(config.get("funding.window_days", 180)))
+        s["detected"] = bool(funding)
+    funding_event = FundingEvent(
+        detected=bool(funding),
+        stage=FundingStage(funding["stage"]) if funding else None,
+        amount_usd=int(funding["amount_usd"]) if funding else None,
+        closed_at=dt.date.fromisoformat(funding["closed_at"]) if funding else None,
+        source_url=funding["source_url"] if funding else None,
+    )
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 8: preliminary segment label (refined by classifier)
+    # ──────────────────────────────────────────────────────────────────────
+    buying = BuyingWindowSignals(
+        funding_event=funding_event,
+        layoff_event=layoff_event,
+        leadership_change=leadership_change,
+    )
+
+    preliminary = HiringSignalBrief(
+        prospect_domain=domain,
+        prospect_name=record.get("name", domain),
+        generated_at=dt.datetime.now(dt.timezone.utc),
+        primary_segment_match=Segment.ABSTAIN,
+        segment_confidence=0.0,
+        ai_maturity=ai,
+        hiring_velocity=velocity,
+        buying_window_signals=buying,
+        tech_stack=tokens,
+        bench_to_brief_match=bench_match,
+        data_sources_checked=source_checks,
+        honesty_flags=[],
+    )
+
+    # Run the ICP classifier
+    from agent.classifier import classify
+    with span("enrichment.classify", trace=trace) as s:
+        result = classify(preliminary.model_dump())
+        s["segment"] = result.segment
+        s["confidence"] = result.confidence
+    preliminary.primary_segment_match = Segment(result.segment) if result.segment != "abstain" else Segment.ABSTAIN
+    preliminary.segment_confidence = result.confidence
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 9: honesty flags
+    # ──────────────────────────────────────────────────────────────────────
+    flags: list[HonestyFlag] = []
+    if velocity.velocity_label.value == "insufficient_signal" or velocity.signal_confidence < 0.4:
+        flags.append(HonestyFlag.WEAK_HIRING_VELOCITY_SIGNAL)
+    if ai.confidence < 0.5:
+        flags.append(HonestyFlag.WEAK_AI_MATURITY_SIGNAL)
+    if layoff_event.detected and funding_event.detected:
+        flags.append(HonestyFlag.LAYOFF_OVERRIDES_FUNDING)
+    if bench_match.gaps:
+        flags.append(HonestyFlag.BENCH_GAP_DETECTED)
+    if inferred_not_confirmed:
+        flags.append(HonestyFlag.TECH_STACK_INFERRED_NOT_CONFIRMED)
+    if result.disqualifiers_hit:
+        flags.append(HonestyFlag.CONFLICTING_SEGMENT_SIGNALS)
+    preliminary.honesty_flags = flags
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 10: competitor-gap brief (only for Segment 4 or high AI maturity)
+    # ──────────────────────────────────────────────────────────────────────
+    with span("enrichment.competitor_gap", trace=trace) as s:
+        gap_brief: CompetitorGapBrief | None = None
+        if ai.score >= 2 or result.segment == "segment_4_specialized_capability":
+            gap_brief = competitor_gap.generate(record, ai.score)
+        s["generated"] = bool(gap_brief)
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Stage 11: write
+    # ──────────────────────────────────────────────────────────────────────
+    if write_to is not None:
+        _write_briefs(preliminary, gap_brief, write_to)
+
+    return preliminary, gap_brief
 
 
-def _write_cache(
-    cache_dir: pathlib.Path,
-    *,
-    brief: HiringSignalBrief,
-    maturity: AiMaturityScore,
-    gap: CompetitorGapBrief,
-    icp: IcpClassification,
+def _write_briefs(
+    hiring: HiringSignalBrief,
+    gap: CompetitorGapBrief | None,
+    target: str | Path,
 ) -> None:
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / "hiring_signal_brief.json").write_text(brief.model_dump_json(indent=2))
-    (cache_dir / "ai_maturity_score.json").write_text(maturity.model_dump_json(indent=2))
-    (cache_dir / "competitor_gap_brief.json").write_text(gap.model_dump_json(indent=2))
-    (cache_dir / "icp_classification.json").write_text(icp.model_dump_json(indent=2))
-
-
-def _from_cache(cache_dir: pathlib.Path) -> EnrichmentResult:
-    brief = HiringSignalBrief.model_validate_json((cache_dir / "hiring_signal_brief.json").read_text())
-    maturity = AiMaturityScore.model_validate_json((cache_dir / "ai_maturity_score.json").read_text())
-    gap = CompetitorGapBrief.model_validate_json((cache_dir / "competitor_gap_brief.json").read_text())
-    icp = IcpClassification.model_validate_json((cache_dir / "icp_classification.json").read_text())
-    return EnrichmentResult(brief=brief, maturity=maturity, gap=gap, icp=icp)
+    target = Path(target)
+    if not target.is_absolute():
+        target = REPO_ROOT / target
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "hiring_signal_brief.json").write_text(
+        hiring.model_dump_json(indent=2, exclude_none=True), encoding="utf-8"
+    )
+    if gap:
+        (target / "competitor_gap_brief.json").write_text(
+            gap.model_dump_json(indent=2, exclude_none=True), encoding="utf-8"
+        )

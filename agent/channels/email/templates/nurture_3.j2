@@ -1,11 +1,10 @@
-Subject: Re: {{ prior_subject }}
+Subject: {{ subject }}
 
-Hi {{ prospect.contact_first }},
+{{ body_text }}
 
-Closing the loop. Here's a one-pager on augmented delivery for {{ brief.company.industries[0] | default("your sector") }} in case it's useful later: https://convergine-sandbox.invalid/notes/{{ brief.crunchbase_uuid[:8] }}.
+{{ cal_link }}
 
-I'll stop reaching out for now. If this becomes relevant, just reply to this thread.
-
-— Tenacious
-
-— draft: pending Tenacious delivery-lead approval
+{{ sender.first_name }}
+{{ sender.title }}
+Tenacious Intelligence Corporation
+gettenacious.com

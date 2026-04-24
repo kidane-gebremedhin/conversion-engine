@@ -1,126 +1,161 @@
-# 16 — Data Handling Policy and Kill-Switch
+# 16 — Data Handling and Kill Switch
 
-**Source:** Challenge document — "Data Handling Policy" (Rules 1–5), "Evidence-Graph Grading" (Evidence-graph integrity row).
+The policy rules in [`tenacious_sales_data/policy/data_handling_policy.md`](../tenacious_sales_data/policy/data_handling_policy.md) and the limited license in [`tenacious_sales_data/LICENSE.md`](../tenacious_sales_data/LICENSE.md) are **binding**. This spec defines how the implementation enforces each clause in code — not merely in documentation.
 
-## 1. Rules (disqualifying if violated)
+**Violations are grounds for removal from the program.** The rules do not depend on intent; they depend on the code pattern.
 
-1. **No real Tenacious customer data leaves Tenacious.** We never receive CRM exports, real email threads, real phone numbers, or real names of live deals.
-2. **Every prospect the system interacts with during the challenge week is synthetic.** Synthetic = Crunchbase ODM firmographics + fictitious contact details. The program-operated SMS rig routes all outbound to a staff-controlled sink.
-3. **Seed materials are limited-license** for the challenge week. No redistribution. All local copies deleted at end of week; code stays in the program repo.
-4. **Kill-switch required.** If the code could plausibly run against real prospects, the README documents it and ships a config flag that, **when unset**, routes all outbound to the staff sink. **Default must be unset.**
-5. **Tenacious-branded output marked `draft` in metadata.** Tenacious executive team reserves the right to redact any such content from the final memo.
+## Rule 1 — No real Tenacious customer data leaves Tenacious
 
-Breaking any rule is **grounds for removal from the program**. Fabricated Tenacious numbers in the memo are a separate disqualifying violation per the Evidence-Graph Grading row.
+The implementation receives no CRM exports, no real threads, and no real deal names. If the repo ever contains such data (through program error), it is reported to tutors immediately and deleted.
 
-## 2. Kill-switch architecture
+Enforcement: a CI check scans committed files for patterns that could plausibly be real customer data (email domains not in `tenacious_sales_data/`, phone numbers, names absent from the synthetic-prospects fixture). The check runs on every `git push`.
+
+## Rule 2 — Every prospect the system contacts during the challenge week is synthetic
+
+Every prospect in `data/synthetic_prospects.json` is a **synthetic profile** derived from public Crunchbase firmographics combined with **fictitious contact details**. Program-operated email and phone addresses replace real ones. The program's SMS rig routes all outbound to a staff-controlled sink.
+
+**You may not use real company contact addresses.** Not even ones found on a public website. A `contact@examplecompany.com` in the queue **resolves to the sink**, not to the real company.
+
+Enforcement:
+
+- `data/synthetic_prospects.json` is the **only** allowed source of prospect contact records. A runtime check in `agent/kill_switch.py` asserts the recipient is drawn from this file **or** matches the staff sink pattern.
+- Any other recipient raises `PolicyViolation` and halts the process.
+
+## Rule 3 — Seed materials are licensed for the challenge week only
+
+Per `LICENSE.md`:
+
+- **May**: read, reference, and adapt seed materials inside the repo during the week.
+- **May**: quote ICP, pricing bands, and sample email sequences in agent prompts.
+- **May**: retain the repo after the challenge with these redactions:
+  - All Tenacious-branded email copy marked `draft` in metadata.
+  - Bench-summary references replaced with placeholder counts.
+- **May not**: redistribute seed materials outside the repo, publish publicly, or quote client / case-study names beyond the anonymized materials.
+
+Enforcement:
+
+- The repo `.gitignore` explicitly excludes `data/real_*`, `eval/runs/leakable_*`, and any non-tenacious_sales_data path that could contain customer data.
+- A redaction script `scripts/redact_for_portfolio.sh` exists to apply the post-week redactions in one pass.
+
+## Rule 4 — Public-source scraping rules
+
+Per the data-handling policy:
+
+- **Public pages only.** No login. No stored cookies or session tokens for gated content.
+- **No captcha bypass.** A captcha triggers `status: rate_limited` in `data_sources_checked` and stops that scrape.
+- **Robots.txt is respected.** Checked on first contact per domain, cached 24h.
+- **Rate limit**: at least 2 seconds between requests to the same domain; at most 3 concurrent tabs per domain.
+- **User agent**: `TRP1-Week10-Research (trainee@trp1.example)` — never impersonates a browser or a named crawler.
+- **Live-crawl cap**: no more than 200 distinct companies during the challenge week.
+
+Enforcement (`agent/enrichment/jobposts.py`, `agent/enrichment/leadership.py`):
+
+- A global in-memory `DomainRateLimiter` tracks per-domain request timestamps; requests under 2s fail fast.
+- `data/crawl_counter.json` is updated atomically; a 201st unique domain lookup raises `PolicyViolation`.
+- A `robots.txt` cache is checked before any GET; disallowed paths raise `PolicyViolation`.
+- Playwright is configured with the policy user agent; a startup assertion verifies the UA is not the default browser UA.
+
+## Rule 5 — The kill switch is not optional
+
+### Contract
+
+The kill switch is a single function, `deliver(channel, to, payload) -> message_id`, in `agent/kill_switch.py`. **No other code path from agent to external sender exists.** This is the load-bearing policy boundary.
 
 ```python
-# agent/integrations/killswitch.py
-
-class KillSwitch:
-    def __init__(self, cfg: KillSwitchConfig):
-        self.enabled = cfg.enabled                  # default False
-        self.sink_email = cfg.sink_email
-        self.sink_shortcode = cfg.sink_shortcode
-        self.audit_log_path = cfg.audit_log_path
-
-    def route_email(self, to: str, trace_id: str) -> str:
-        if not self.enabled:
-            self._audit("email", to, self.sink_email, trace_id)
-            return self.sink_email
-        self._audit("email", to, to, trace_id)
-        return to
-
-    def route_sms(self, to_number: str, trace_id: str) -> str:
-        if not self.enabled:
-            self._audit("sms", to_number, self.sink_shortcode, trace_id)
-            return self.sink_shortcode
-        self._audit("sms", to_number, to_number, trace_id)
-        return to_number
+def deliver(channel: Channel, to: str, payload: Payload) -> MessageId:
+    if not settings.TENACIOUS_OUTBOUND_ENABLED:
+        to = settings.sink_for(channel)     # email / sms / voice sink
+        payload = _mark_sink_metadata(payload)
+    _assert_draft_header_present(payload)
+    _assert_recipient_synthetic_or_sink(to, channel)
+    _log_langfuse_deliver_span(channel, to, payload)
+    return _channel_adapter(channel).send(to, payload)
 ```
 
-Every `send_email` / `send_sms` tool call passes through the switch. There is **no code path** that bypasses it.
+### Configuration
 
-## 3. Configuration
+- `TENACIOUS_OUTBOUND_ENABLED` — **defaults to unset**. `.env.example` ships with the line commented out.
+- `EMAIL_SINK_ADDRESS`, `SMS_SINK_NUMBER`, `VOICE_SINK_NUMBER` — staff-controlled destinations, provided by program staff.
+- Flipping `TENACIOUS_OUTBOUND_ENABLED=1` requires program-staff approval (the approval is logged and required as part of the pilot-selection process).
 
-```yaml
-# config.yaml
-killswitch:
-  enabled: false                            # DEFAULT UNSET — routes to sink
-  sink_email: "sink+convergine@staff-sandbox.tenacious.invalid"
-  sink_shortcode: "22222"                   # program-provided short code
-  audit_log_path: "data/killswitch_audit.jsonl"
-```
+### Enforcement at three levels
 
-Flipping to `true` requires:
-1. Program staff confirmation in writing.
-2. An entry in `README.md` stating the date, the flipper's identity, and the scope (domain, time window, expected volume).
-3. A check on every boot that confirms `enabled == true` was set intentionally (env var `CONVERGINE_ENABLE_REAL_OUTBOUND=1` also required — belt + braces).
+1. **In code**: the kill switch is the only sender path. A CI grep fails the build if any file outside `agent/kill_switch.py` imports a provider SDK (`resend`, `mailersend`, `africastalking`, voice rig) and calls its send method directly.
+2. **At runtime**: `deliver()` asserts the recipient is either a synthetic-prospect address (from `data/synthetic_prospects.json`) or the staff sink. Any other recipient raises `PolicyViolation`.
+3. **At boot**: `infra/smoke_test.sh` confirms the kill-switch gate is wired before the agent starts processing outbound. A failure is a Day-1 readiness blocker.
 
-## 4. README-mandated documentation
+### The contract documented in README
 
-The repo root `README.md` **must** contain a section titled "Kill-switch" covering:
+The repository `README.md` documents the kill switch explicitly — what it is, how it is configured, how the smoke test verifies it, and what the approval process is for flipping it. This is a **required** README section (see [spec 17](17-deliverables-checklist.md)).
 
-- Where the switch lives (config path + env var).
-- Default behaviour when unset.
-- How to enable it (steps 1–3 above).
-- Who audits flips (`data/killswitch_audit.jsonl`).
-- What happens if a real prospect address ends up in the queue while the switch is unset (answer: routed to sink — no leak).
+## Rule 6 — Tenacious-branded output is marked draft
 
-## 5. Synthetic-prospect marking
+Any output of the system that contains Tenacious-branded content (emails, call scripts, proposal snippets, pricing) is marked `draft` in metadata. The Tenacious executive team reserves the right to redact any such content from the memo.
 
-Every `Contact` in HubSpot carries `convergine_synthetic = true` while the switch is unset. A nightly job asserts:
+Enforcement:
 
-```sql
--- conceptual: run against HubSpot via MCP queries
-count(contact where convergine_synthetic = false) == 0
-```
+- **Emails**: every outbound payload carries `X-Tenacious-Status: draft` header. `_assert_draft_header_present(payload)` fires inside `deliver()`. Missing header raises `PolicyViolation`.
+- **HubSpot records**: every contact, deal, and engagement carries `tenacious_status=draft` by default. See [spec 08](08-hubspot-integration.md).
+- **Memo**: every Tenacious-branded claim in `evidence_graph.json` carries `draft_status: draft`. See [spec 14](14-memo-specification.md).
 
-Any row failing this raises a P0 alert.
+## Rule 7 — Data minimization in traces
 
-## 6. Draft marker propagation
+Langfuse and HubSpot traces log only what is necessary for:
 
-| Surface | How `draft` is marked |
-|---------|-----------------------|
-| Email header | `X-Convergine-Draft: true` |
-| Email body | A one-line footer `— draft: pending Tenacious delivery-lead approval` (removable only when `draft_approved == true`) |
-| HubSpot event | `payload.draft = true` |
-| Cal.com booking | `metadata.draft = true`; invite description prepends `[DRAFT]` |
-| SMS | Prefix `[DRAFT]` in the sandbox body |
+- Evaluating agent performance.
+- Producing the evidence graph for the memo.
+- Debugging failures.
 
-## 7. Data-deletion policy
+**Do not log**:
 
-At end of week:
+- Full PII beyond first name + email (no home address, no personal phone unless the prospect explicitly shared it for scheduling).
+- Payment / banking info.
+- HIPAA / GDPR-health-category content.
 
-- Seed materials (sales deck, case studies, pricing sheet) purged from all personal infrastructure: laptops, cloud drives, build servers.
-- Code retained in program repo.
-- Enriched briefs cached under `data/briefs_cache/` are retained only if they reference synthetic prospects; anything that accidentally references a real company is purged.
-- `scripts/end_of_week_purge.sh` automates the deletion, writes an audit log to `data/purge_audit.jsonl`.
+Enforcement:
 
-## 8. Audit trail
+- `config.yaml > observability.allowed_attributes` defines the closed set of attribute keys Langfuse spans may carry. `agent/observability/langfuse.py` strips any non-allowed attributes before export.
+- HubSpot custom properties are restricted to the `tenacious_*` prefix (see [spec 08](08-hubspot-integration.md)).
 
-Every routing decision is appended to `data/killswitch_audit.jsonl`:
+## Rule 8 — Non-disclosure of Tenacious internal data
 
-```json
-{"ts": "2026-04-22T11:02:14Z", "channel": "email", "intended_to": "cto@acme.ai", "routed_to": "sink+convergine@staff-sandbox.tenacious.invalid", "trace_id": "...", "switch_enabled": false}
-```
+No Tenacious internal data enters a public repository or platform. The repo may be kept private during the challenge; before any public release, the redaction script is applied.
 
-The audit log is **append-only** — `chmod 644`, no deletes, tamper check via a running SHA-256 hash appended to each line (Merkle-chain style).
+## Rule 9 — Incident reporting
 
-## 9. Evidence-graph integrity (memo linkage)
+If the system has:
 
-Numbers in the memo must trace to:
-- A Langfuse trace id, or
-- An `invoice_summary.json` line item, or
-- A Tenacious-provided number (bench summary, historical conversion rates in the seed), or
-- A public source (τ²-Bench leaderboard, LeadIQ 2026, Apollo, Clay, Smartlead case studies).
+- Sent outbound to a real (non-sink) recipient,
+- Logged real customer PII,
+- Scraped in a way that may violate a source's terms,
+- Or done anything else that may violate the policy,
 
-Anything not in those four categories is a fabrication. `scripts/lint_memo.py` checks every number against `evidence_graph.json`; unresolved numbers fail the build.
+**stop the agent immediately** and post in Slack with a description and timestamp. Program staff help assess and remediate. **Honest accidental reporting is treated much more favorably than concealment.**
 
-## 10. Acceptance tests
+Enforcement in code:
 
-- With `killswitch.enabled = false`, an email `send` call with `to="cto@acme.ai"` results in Resend seeing recipient `sink+convergine@staff-sandbox.tenacious.invalid`; the audit log records both the intended and routed addresses.
-- Flipping `killswitch.enabled = true` without `CONVERGINE_ENABLE_REAL_OUTBOUND=1` refuses to boot.
-- `scripts/end_of_week_purge.sh` deletes seed materials and leaves code intact; the audit log is produced.
-- `scripts/lint_memo.py memo/memo.md memo/evidence_graph.json` catches a fabricated number inserted into a test fixture.
-- Every outbound artifact (email, SMS, Cal.com invite) carries the draft marker when the switch is unset.
+- `agent/kill_switch.py` raises `PolicyViolation` on any sink-bypass attempt. The exception is uncatchable at the channel layer (it propagates to the process boundary).
+- A post-hoc audit script `scripts/audit_week.py` walks Langfuse traces for any `deliver.*` span whose recipient is not the sink or a synthetic address; the report is reviewed on Day 7 and attached to the final submission.
+
+## Rule 10 — Questions
+
+When in doubt, ask. The policy is deliberately conservative; edge cases are resolved in `#trp1-week10-conversion-engine` Slack, not by the implementation making a judgment call.
+
+## Acknowledgement artifact
+
+Per `policy/acknowledgement.md`:
+
+- Acknowledgement is signed before Act I starts.
+- `infra/acknowledgement_signed.txt` contains the UTC timestamp of confirmation; `infra/smoke_test.sh` verifies this file exists.
+- The repo includes both `infra/acknowledgement_signed.txt` and `policy/acknowledgement_signed.txt` (one location or the other, per the smoke test's expectation).
+
+## Summary: what the implementation must NOT do
+
+- Import a provider SDK outside `agent/kill_switch.py` or its channel adapters.
+- Send outbound to an address that is not the staff sink or a synthetic-prospect address.
+- Ship outbound without the `X-Tenacious-Status: draft` header.
+- Scrape more than 200 distinct domains during the challenge week.
+- Log PII beyond first name and email.
+- Commit an `.env` file, HubSpot token, Resend key, or Africa's Talking secret.
+- Default `TENACIOUS_OUTBOUND_ENABLED` to anything but unset.
+- Hide or silently remediate a policy violation.

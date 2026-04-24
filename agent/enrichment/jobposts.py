@@ -1,119 +1,97 @@
-"""Job-post snapshot reader + velocity metric.
+"""Job-post velocity from the frozen April 2026 snapshot.
 
-Reads the early-April 2026 snapshot under `data/jobposts_snapshot/`. Each
-company directory has `now.json` + `prior.json` (60-day prior baseline).
+Live scraping would use Playwright with the policy-compliant rate limiter.
+During the challenge week the frozen snapshot is primary; a small live crawl
+of ≤200 companies is permitted but is not the default path. We omit the
+live path here to keep the flow deterministic for tests; the live adapter
+can be added behind this interface without changing callers.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
-import pathlib
-import re
-from datetime import date
 from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel
-
-
-_SNAP = pathlib.Path("data/jobposts_snapshot")
-
-_AI_ADJ_RE = re.compile(
-    r"\b(machine learning|ml engineer|applied scientist|research scientist|llm|ai engineer|"
-    r"ai product|data platform|data engineer.*(ml|ai)|mlops|vector|rag|genai)\b",
-    re.IGNORECASE,
-)
+from agent.config import config, settings
 
 
-class JobPost(BaseModel):
-    company_domain: str
-    title: str
-    posted_at: date | None = None
-    location: str | None = None
-    department: str | None = None
-    role_category: str = "other"
-    url: str | None = None
+@lru_cache(maxsize=1)
+def _load_snapshot() -> dict[str, Any]:
+    path = Path(settings.JOB_POSTS_SNAPSHOT_PATH)
+    if not path.exists():
+        return {"companies": {}}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
 
-class VelocityReport(BaseModel):
-    open_roles_now: int
-    open_roles_60d_ago: int
-    ratio: float
-    ai_adjacent_fraction: float
-    qualifies_for_aggressive_hiring_claim: bool
-    confidence: float
+def company_jobposts(domain: str) -> dict[str, Any] | None:
+    """Return the snapshot entry for a domain, or None."""
+    data = _load_snapshot().get("companies", {})
+    return data.get(domain.lower())
 
 
-def _slug(domain: str) -> str:
-    return domain.lower().replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
+def open_roles_counts(domain: str) -> tuple[int, int]:
+    """Return (open_today, open_60d_ago)."""
+    entry = company_jobposts(domain)
+    if not entry:
+        return 0, 0
+    today = len(entry.get("open_roles_today", []))
+    ago = int(entry.get("open_roles_60d_ago_count", 0))
+    return today, ago
 
 
-def _load(company_dir: pathlib.Path, which: str) -> list[JobPost]:
-    p = company_dir / f"{which}.json"
-    if not p.exists():
+def velocity_label_from_counts(today: int, ago: int) -> tuple[str, float]:
+    """Return (velocity_label, signal_confidence) given role counts."""
+    thresholds = config.get("jobposts.velocity_thresholds", {})
+    min_valid = int(config.get("jobposts.min_roles_for_valid_signal", 5))
+
+    if today < min_valid:
+        return "insufficient_signal", 0.3
+
+    ratio = today / ago if ago > 0 else float("inf")
+
+    if ratio >= float(thresholds.get("tripled_or_more", 3.0)):
+        label = "tripled_or_more"
+    elif ratio >= float(thresholds.get("doubled", 2.0)):
+        label = "doubled"
+    elif ratio >= float(thresholds.get("increased_modestly", 1.25)):
+        label = "increased_modestly"
+    elif ratio >= float(thresholds.get("flat_low", 0.8)):
+        label = "flat"
+    else:
+        label = "declined"
+
+    # higher confidence when both values are large enough to be stable
+    confidence = 0.85 if (today >= 8 and ago >= 3) else 0.65
+    return label, confidence
+
+
+def ai_adjacent_ratio(domain: str) -> float:
+    entry = company_jobposts(domain)
+    if not entry:
+        return 0.0
+    roles = entry.get("open_roles_today", [])
+    if not roles:
+        return 0.0
+    adjacent = sum(1 for r in roles if r.get("ai_adjacent"))
+    return adjacent / len(roles)
+
+
+def sources_used(domain: str) -> list[str]:
+    entry = company_jobposts(domain)
+    if not entry:
         return []
-    rows = json.loads(p.read_text())
-    out: list[JobPost] = []
-    for r in rows:
-        out.append(
-            JobPost(
-                company_domain=r.get("company_domain", ""),
-                title=r["title"],
-                posted_at=_date(r.get("posted_at")),
-                location=r.get("location"),
-                department=r.get("department"),
-                role_category=r.get("role_category", "other"),
-                url=r.get("url"),
-            )
-        )
-    return out
+    srcs = {r.get("source") for r in entry.get("open_roles_today", [])}
+    return sorted(s for s in srcs if s)
 
 
-def _date(s: str | None) -> date | None:
-    if not s:
-        return None
-    from datetime import datetime
-
-    try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except ValueError:
-        return None
+def last_fetched_at() -> dt.datetime:
+    data = _load_snapshot()
+    snapshot_date = data.get("snapshot_date", "2026-04-01")
+    return dt.datetime.fromisoformat(f"{snapshot_date}T00:00:00+00:00")
 
 
-@lru_cache(maxsize=256)
-def _posts(domain: str) -> tuple[list[JobPost], list[JobPost]]:
-    d = _SNAP / _slug(domain)
-    if not d.exists():
-        return [], []
-    return _load(d, "now"), _load(d, "prior")
-
-
-def crawl(company_domain: str) -> list[JobPost]:
-    now, _ = _posts(company_domain)
-    return now
-
-
-def velocity(company_domain: str) -> VelocityReport:
-    now, prior = _posts(company_domain)
-    n, p = len(now), max(1, len(prior))  # avoid /0
-    ratio = n / p
-    ai_count = sum(1 for j in now if _AI_ADJ_RE.search(j.title) or _AI_ADJ_RE.search(j.department or ""))
-    ai_frac = (ai_count / n) if n else 0.0
-    qualifies = n >= 5 and ratio >= 2.0
-    # Confidence — data present on both windows + reasonable absolute volume.
-    conf = 0.0
-    if now:
-        conf += 0.45
-    if prior:
-        conf += 0.25
-    if n >= 10:
-        conf += 0.15
-    if n >= 5:
-        conf += 0.08
-    conf = min(conf, 0.95)
-    return VelocityReport(
-        open_roles_now=n,
-        open_roles_60d_ago=len(prior),
-        ratio=round(ratio, 2),
-        ai_adjacent_fraction=round(ai_frac, 2),
-        qualifies_for_aggressive_hiring_claim=qualifies,
-        confidence=round(conf, 2),
-    )
+def invalidate_cache() -> None:
+    _load_snapshot.cache_clear()

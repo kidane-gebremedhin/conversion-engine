@@ -1,182 +1,214 @@
 # 02 — Repository Structure
 
-**Source:** Challenge document — "GitHub Repo Requirements" (interim + final).
-
-## 1. Top-level layout
+The repository layout matches the structure required by the challenge brief's interim and final submission deliverables, plus the specs and policies the implementation enforces.
 
 ```
 conversion-engine/
-├── README.md                      # architecture diagram, setup, requirements, kill-switch docs
-├── pyproject.toml / requirements.txt
-├── .env.example                   # all secrets (see __specs/.env.example)
-├── config.example.yaml            # tunables (see __specs/config.example.yaml)
-├── docker-compose.yml             # Cal.com + optional Langfuse self-host
-├── Makefile                       # `make setup`, `make baseline`, `make run`, `make probe`, `make eval`
+├── README.md                          # Architecture diagram, setup, kill-switch docs
+├── .env.example                       # Template; real .env never committed
+├── .gitignore                         # Excludes .env, eval/runs/, briefs/, sealed/
+├── Makefile                           # Common dev commands (see below)
 │
-├── agent/                         # all agent source (interim deliverable)
+├── __specs/                           # This directory — the engineering spec
+│   ├── README.md
+│   ├── 00-overview.md ... 18-configuration.md
+│   ├── .env.example
+│   └── config.example.yaml
+│
+├── __plans/                           # Day-by-day work breakdown (out of spec scope;
+│   └── ...                            #   the planning docs live here)
+│
+├── agent/                             # The agent and all integrations
 │   ├── __init__.py
-│   ├── main.py                    # CLI entry: `python -m agent.main --prospect <crunchbase_id>`
-│   ├── orchestrator.py            # state machine COLD→NURTURE→QUALIFIED→BOOKED
-│   ├── state.py                   # ThreadState, Prospect, Brief dataclasses
-│   ├── config.py                  # pydantic-settings loader (reads .env + config.yaml)
-│   │
-│   ├── llm/
-│   │   ├── client.py              # OpenRouter wrapper, retry, Langfuse instrumentation
-│   │   ├── prompts/               # all system + user prompts (versioned)
-│   │   │   ├── classify_icp.md
-│   │   │   ├── draft_outreach.md
-│   │   │   ├── draft_followup.md
-│   │   │   ├── classify_reply.md
-│   │   │   ├── tone_check.md
-│   │   │   └── bench_check.md
-│   │   └── tools.py               # tool-schema definitions
-│   │
+│   ├── requirements.txt
+│   ├── config.py                      # Pydantic settings; loads .env + YAML
+│   ├── kill_switch.py                 # The single deliver() gate
+│   ├── prompts/                       # System prompts, few-shot exemplars
+│   │   ├── classifier.txt
+│   │   ├── composer_segment_1.txt
+│   │   ├── composer_segment_2.txt
+│   │   ├── composer_segment_3.txt
+│   │   ├── composer_segment_4.txt
+│   │   ├── composer_abstain.txt
+│   │   ├── reply_classifier.txt
+│   │   ├── reply_engaged.txt
+│   │   ├── reply_curious.txt
+│   │   ├── reply_objection.txt
+│   │   ├── reply_soft_defer.txt
+│   │   ├── tone_preservation.txt
+│   │   └── context_brief_synthesizer.txt
 │   ├── enrichment/
-│   │   ├── crunchbase.py          # ODM sample loader + funding events
-│   │   ├── jobposts.py            # Playwright scraper (BuiltIn / Wellfound)
-│   │   ├── layoffs.py             # layoffs.fyi CSV parser
-│   │   ├── leadership.py          # press + Crunchbase leadership-change detector
-│   │   ├── techstack.py           # BuiltWith / Wappalyzer wrapper
-│   │   ├── ai_maturity.py         # 0–3 scorer with per-signal justification
-│   │   ├── competitor_gap.py      # top-quartile peers + gap extraction
-│   │   └── pipeline.py            # orchestrator emitting hiring_signal_brief.json + competitor_gap_brief.json
-│   │
-│   ├── icp/
-│   │   ├── classifier.py          # segment classifier with abstention
-│   │   └── segments.yaml          # 4 fixed segments + filters
-│   │
+│   │   ├── __init__.py
+│   │   ├── pipeline.py                # Orchestrates the DAG
+│   │   ├── crunchbase.py              # ODM sample lookup
+│   │   ├── layoffs.py                 # layoffs.fyi CSV parsing
+│   │   ├── jobposts.py                # Playwright scraper (rate-limited)
+│   │   ├── leadership.py              # CTO/VP-Eng change detection
+│   │   ├── ai_maturity.py             # 0–3 scoring with justifications
+│   │   ├── competitor_gap.py          # Top-quartile peer analysis
+│   │   ├── tech_stack.py              # BuiltWith/Wappalyzer
+│   │   └── briefs.py                  # Pydantic models matching schemas/
+│   ├── classifier.py                  # ICP segment + confidence
+│   ├── composer.py                    # Email/SMS draft generation
+│   ├── tone_check.py                  # Five-marker scoring
+│   ├── reply_handler.py               # Inbound classification and response
+│   ├── handoff.py                     # The five handoff conditions
 │   ├── channels/
+│   │   ├── __init__.py
 │   │   ├── email/
-│   │   │   ├── send.py            # Resend client
-│   │   │   ├── webhook.py         # FastAPI inbound reply handler
-│   │   │   └── templates/         # jinja2 templates; draft-marked metadata
+│   │   │   ├── __init__.py
+│   │   │   ├── send.py                # Resend / MailerSend adapter
+│   │   │   ├── webhook.py             # FastAPI inbound endpoint
+│   │   │   ├── render.py              # Jinja2 template binding
+│   │   │   └── templates/
+│   │   │       ├── cold_signal_grounded.j2
+│   │   │       ├── cold_exploratory.j2     # Abstention path
+│   │   │       ├── nurture_1.j2            # Day 5
+│   │   │       ├── nurture_2.j2            # Day 12 close
+│   │   │       ├── nurture_3.j2            # 6-month parking
+│   │   │       ├── scheduling_offer.j2
+│   │   │       ├── post_book_confirmation.j2
+│   │   │       └── handoff_human.j2
 │   │   ├── sms/
-│   │   │   ├── send.py            # Africa's Talking client
-│   │   │   └── webhook.py         # FastAPI inbound SMS handler
-│   │   └── voice/                 # optional bonus
-│   │       └── rig.py             # Shared Voice Rig webhook + keyword prefix
-│   │
-│   ├── integrations/
-│   │   ├── hubspot_mcp.py         # MCP client, event logger
-│   │   ├── calcom.py              # booking + invite with attached brief
-│   │   └── killswitch.py          # sink router — default unset
-│   │
-│   ├── policies/
-│   │   ├── tone.py                # style_guide.md enforcement
-│   │   ├── bench.py               # bench-gated commitment policy
-│   │   ├── confidence.py          # signal-confidence-aware phrasing
-│   │   └── channel_handoff.py     # email → SMS → voice handoff rules
-│   │
-│   └── server.py                  # FastAPI app exposing webhooks + healthz
+│   │   │   ├── __init__.py
+│   │   │   ├── send.py                # Africa's Talking adapter
+│   │   │   └── webhook.py
+│   │   └── voice/
+│   │       ├── __init__.py
+│   │       ├── send.py                # Shared Voice Rig adapter (bonus)
+│   │       └── webhook.py
+│   ├── hubspot/
+│   │   ├── __init__.py
+│   │   ├── client.py                  # MCP client wrapper
+│   │   ├── schema.py                  # Custom properties (tenacious_status, etc.)
+│   │   └── events.py                  # Conversation-event writers
+│   ├── calendar/
+│   │   ├── __init__.py
+│   │   ├── client.py                  # Cal.com REST client
+│   │   ├── webhook.py                 # Booking-created handler
+│   │   └── context_brief.py           # Renders schemas/discovery_call_context_brief.md
+│   ├── observability/
+│   │   ├── __init__.py
+│   │   ├── langfuse.py                # Trace span helpers
+│   │   └── cost.py                    # Per-trace cost computation
+│   ├── llm/
+│   │   ├── __init__.py
+│   │   ├── client.py                  # OpenRouter / Anthropic adapter
+│   │   └── tiers.py                   # dev-tier vs eval-tier selection
+│   └── server.py                      # FastAPI app entrypoint
 │
-├── eval/                          # τ²-Bench harness (interim deliverable)
-│   ├── harness.py                 # wraps sierra-research/tau2-bench
-│   ├── baseline.md                # Act I write-up (≤ 400 words)
-│   ├── score_log.json             # pass@1 + 95 % CI per run
-│   ├── trace_log.jsonl            # full trajectories
-│   ├── dev_slice.json             # 30-task dev slice pointer
-│   ├── held_out_slice.json        # 20-task sealed partition pointer (delivered by program)
-│   └── run_baseline.py            # `python eval/run_baseline.py --trials 5`
+├── eval/                              # τ²-Bench harness + run artifacts
+│   ├── tau2/                          # Cloned upstream submodule
+│   ├── harness.py                     # Wraps tau2 with Langfuse + cost logging
+│   ├── score_log.json                 # Day-1 baseline + reproduction check
+│   ├── trace_log.jsonl                # Full τ²-Bench trajectories
+│   ├── baseline.md                    # ≤400 words: what reproduced, CI, cost
+│   └── runs/                          # Per-run trace files cited by evidence_graph
 │
-├── probes/                        # Act III / final deliverable
-│   ├── probe_library.md           # 30+ structured entries
-│   ├── failure_taxonomy.md        # grouped by category with trigger rates
-│   ├── target_failure_mode.md     # highest-ROI failure, Tenacious-cost derivation
-│   ├── probes/                    # executable probe files, one per entry
-│   │   ├── icp_misclass_*.yaml
-│   │   ├── signal_overclaim_*.yaml
-│   │   ├── bench_overcommit_*.yaml
-│   │   ├── tone_drift_*.yaml
-│   │   ├── multi_thread_leak_*.yaml
-│   │   ├── cost_pathology_*.yaml
-│   │   ├── dual_control_*.yaml
-│   │   ├── scheduling_tz_*.yaml
-│   │   ├── signal_reliability_*.yaml
-│   │   └── gap_overclaim_*.yaml
-│   └── run_probes.py              # emits failure_taxonomy.md + observed trigger rates
+├── probes/                            # Act III artifacts
+│   ├── probe_library.md               # 30+ structured probe entries
+│   ├── failure_taxonomy.md            # Probes grouped by category, with trigger rates
+│   ├── target_failure_mode.md         # Highest-ROI failure with business-cost derivation
+│   └── runs/                          # Per-probe execution traces
 │
-├── method/                        # Act IV final deliverable
-│   ├── method.md                  # mechanism + rationale + hyperparameters + 3 ablations
-│   ├── ablation_results.json      # pass@1, 95 % CI, cost-per-task, p95 latency
-│   ├── held_out_traces.jsonl      # raw traces for each of 3 conditions
-│   ├── mechanism.py               # implementation of the chosen mechanism
-│   └── stat_test.py               # paired bootstrap / permutation test for Delta A
+├── method/                            # Act IV artifacts
+│   ├── method.md                      # Mechanism, hyperparameters, three ablations
+│   ├── ablation_results.json          # pass@1, 95% CI, cost-per-task, p95 latency
+│   ├── held_out_traces.jsonl          # Sealed-slice traces (your_method, day1, gepa)
+│   └── stat_test.md                   # Delta A positive with p<0.05
 │
-├── market_space/                  # optional distinguished-tier (Day 6)
+├── memo/                              # Act V artifacts
+│   ├── memo.pdf                       # Exactly 2 pages
+│   ├── memo.md                        # Source markdown for the PDF
+│   ├── evidence_graph.json            # Every numeric claim → trace ID or source
+│   ├── invoice_summary.json           # Rig + LLM spend totals for cost-per-lead
+│   └── README_for_inheritor.md        # Written for the engineer inheriting this work
+│
+├── market_space/                      # Distinguished-tier stretch (optional)
 │   ├── market_space.csv
 │   ├── top_cells.md
-│   └── methodology.md
+│   ├── methodology.md
+│   └── validation_sample.csv          # Hand-labeled 30–50 row precision/recall set
 │
-├── memo/                          # Act V final deliverable
-│   ├── memo.pdf                   # exactly 2 pages
-│   ├── memo.md                    # source markdown
-│   ├── evidence_graph.json        # every numeric claim → trace_id / invoice line
-│   ├── invoice_summary.json       # LLM + rig spend
-│   └── figures/
+├── tenacious_sales_data/              # The seed materials (read-only mirror)
+│   ├── DAY0_CHECKLIST.md
+│   ├── LICENSE.md
+│   ├── policy/
+│   │   ├── data_handling_policy.md
+│   │   └── acknowledgement.md
+│   ├── schemas/
+│   │   ├── hiring_signal_brief.schema.json
+│   │   ├── competitor_gap_brief.schema.json
+│   │   ├── discovery_call_context_brief.md
+│   │   ├── sample_hiring_signal_brief.json
+│   │   └── sample_competitor_gap_brief.json
+│   └── seed/
+│       ├── icp_definition.md
+│       ├── style_guide.md
+│       ├── baseline_numbers.md
+│       ├── bench_summary.json
+│       ├── pricing_sheet.md
+│       ├── case_studies.md
+│       ├── sales_deck.pptx
+│       ├── sales_deck_notes.md
+│       ├── email_sequences/
+│       │   ├── cold.md
+│       │   ├── warm.md
+│       │   └── reengagement.md
+│       └── discovery_transcripts/
+│           ├── transcript_01_series_b_startup.md
+│           ├── transcript_02_mid_market_restructure.md
+│           ├── transcript_03_new_cto_transition.md
+│           ├── transcript_04_specialized_capability.md
+│           └── transcript_05_objection_heavy.md
 │
-├── seed/                          # read-only inputs from the private seed repo (Day 0)
-│   ├── ICP.md
-│   ├── sales_deck.pdf             # anonymised
-│   ├── case_studies/              # redacted, sector+size descriptors only
-│   ├── email_sequences/
-│   ├── pricing.yaml               # public-tier bands
-│   ├── bench_summary.yaml         # updated weekly, authoritative for capacity
-│   ├── sample_calls/              # synthetic transcripts
-│   └── style_guide.md             # tone markers
+├── data/                              # Frozen public snapshots for reproducibility
+│   ├── crunchbase_odm_sample.json     # Apache-2.0 luminati-io mirror
+│   ├── layoffs_fyi_2026_q1.csv
+│   ├── job_posts_snapshot_2026-04-01.json
+│   └── synthetic_prospects.json       # The 20+ test prospects + sink contacts
 │
-├── data/
-│   ├── crunchbase_odm/            # 1001-record sample
-│   ├── layoffs_fyi/               # CC-BY CSV snapshot
-│   ├── jobposts_snapshot/         # early-April 2026 frozen snapshot
-│   └── briefs_cache/              # per-prospect enriched briefs
+├── infra/
+│   ├── docker-compose.yml             # Cal.com self-hosted
+│   ├── cal_fixtures/                  # Program-provided mock calendars
+│   ├── killswitch.md                  # The kill-switch contract
+│   ├── smoke_test.sh                  # Five green checks
+│   └── acknowledgement_signed.txt     # Created after policy acknowledgement
 │
-├── scripts/
-│   ├── setup_calcom.sh
-│   ├── setup_hubspot_sandbox.sh
-│   ├── provision_resend.py
-│   ├── route_sink.py              # default kill-switch sink
-│   └── seed_synthetic_prospects.py
-│
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
-│
-└── __specs/                       # these specification files
+└── policy/                            # Mirror at repo root for smoke-test compatibility
+    └── acknowledgement_signed.txt     # (same as infra/) — see DAY0_CHECKLIST.md
 ```
 
-## 2. Interim-vs-final inventory
+## Ownership and conventions
 
-| Deliverable | Path | Due |
-|-------------|------|-----|
-| Repo root README with architecture + setup + kill-switch docs | [README.md](../README.md) | Wed |
-| Agent source tree | `agent/` | Wed |
-| τ²-Bench harness + baseline + traces | `eval/` | Wed |
-| `baseline.md` (≤ 400 words) | `eval/baseline.md` | Wed |
-| PDF report (interim) | `reports/interim.pdf` | Wed (public Drive link) |
-| `probes/` directory with 30+ probes, taxonomy, target-failure-mode | `probes/` | Sat |
-| `method.md` + `ablation_results.json` + `held_out_traces.jsonl` | `method/` | Sat |
-| `evidence_graph.json` | `memo/` | Sat |
-| `memo.pdf` (exactly 2 pages) | `memo/` | Sat |
-| Demo video (≤ 8 min, public, no login) | `demo/` or external link | Sat |
+- **Per-spec ownership**: Each directory above maps to one or more specs in `__specs/`. The spec is the contract; the code is the implementation.
+- **No business logic in `channels/`**: The channel modules are thin adapters. Composition, classification, and tone-checking happen in the agent core.
+- **Briefs are Pydantic models**: `agent/enrichment/briefs.py` mirrors `tenacious_sales_data/schemas/*.schema.json`. A schema test in CI confirms drift is caught.
+- **One kill switch**: There is exactly one place in the repo where `to` is decided for outbound — `agent/kill_switch.py`. Code-review enforces.
+- **Templates live with their channel**: `agent/channels/email/templates/*.j2`. SMS does not have templates (one-line scheduling messages assembled inline).
 
-## 3. Makefile targets (recommended)
+## Makefile targets
+
+The Makefile centralizes common dev commands so the inheriting engineer does not need to memorize incantations:
 
 ```
-make setup           # installs deps, launches Cal.com + Langfuse locally
-make bootstrap       # creates HubSpot sandbox objects, Resend webhook, AT shortcode
-make enrich PROSPECT=<crunchbase_id>
-make run PROSPECT=<crunchbase_id>     # full COLD → BOOKED flow
-make baseline        # τ²-Bench dev-slice pass@1 × 5 trials
-make probe           # executes probes/, emits taxonomy + trigger rates
-make held-out        # eval-tier run of method + day1 + auto-optim
-make memo            # builds memo.pdf from memo.md + evidence_graph.json
-make demo            # scripted e2e flow for the video
+make setup            # Install deps, copy .env.example → .env, init Cal.com
+make smoke            # Run infra/smoke_test.sh
+make enrich DOMAIN=acme.com
+                      # Run the enrichment pipeline for one prospect
+make compose-and-send DOMAIN=acme.com
+                      # End-to-end one synthetic prospect (kill-switch enforced)
+make tau2-baseline    # Reproduce the τ²-Bench retail baseline on dev slice
+make tau2-eval        # Run sealed held-out (eval-tier) — guarded by env var
+make probes           # Execute the probe library against a synthetic prospect
+make memo             # Render memo.md → memo.pdf
+make ack              # Drop infra/acknowledgement_signed.txt with a UTC timestamp
 ```
 
-## 4. Branch / commit hygiene
+## Files the implementation must NOT add
 
-- `main` is always green; tagged `interim-wed` at Wed 21:00 UTC.
-- Each act lands as one PR: `act1-baseline`, `act2-stack`, `act3-probes`, `act4-mechanism`, `act5-memo`.
-- No secrets committed — `.env` gitignored; `.env.example` tracked.
-- Seed materials (`seed/`) are **not** redistributed — gitignored if the seed license forbids; otherwise private repo only.
+- A second outbound code path that bypasses the kill switch.
+- Any committed `.env`, `secrets.yaml`, or HubSpot/Resend tokens.
+- Real Tenacious customer data anywhere in the tree.
+- A `bench_summary_v2.json` or any "updated" version of a seed file (these are read-only).
+- Tenacious-branded outreach copy that lacks the `X-Tenacious-Status: draft` header in tests.

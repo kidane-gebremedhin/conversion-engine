@@ -1,126 +1,88 @@
-"""SMS send — Africa's Talking primary, sink fallback.
+"""SMS send adapter via Africa's Talking (sandbox).
 
-160-char hard cap, sentence-boundary split for longer bodies. Every send
-routes through the kill-switch.
+Enforces: body ≤160 chars, ASCII-only (no emoji), no marketing language.
+Falls back to a local JSONL sink when creds are absent.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
-import pathlib
-import re
-import time
-from dataclasses import dataclass
-from uuid import UUID
+import uuid
+from pathlib import Path
+from typing import Any
 
-import httpx
-
-from agent import tracing
-from agent.integrations.killswitch import KillSwitch
+from agent.config import settings
+from agent.kill_switch import SmsPayload, PolicyViolation
 
 
-_SINK = pathlib.Path("data/sink/sms.jsonl")
-_SMS_MAX = 160
+MAX_BODY_CHARS = 160
+
+_FORBIDDEN_WORDS = (
+    "act now", "limited offer", "free gift", "click here", "congratulations",
+    "best deal", "guaranteed",
+)
 
 
-class SmsBodyTooLong(Exception):
-    pass
-
-
-@dataclass
-class SmsResult:
-    trace_id: str
-    to_effective: str
-    to_intended: str
-    provider: str
-    parts: list[str]
-    draft: bool
-
-
-class SmsSender:
-    def __init__(
-        self,
-        *,
-        killswitch: KillSwitch,
-        provider: str = "sink",
-        username: str = "sandbox",
-        api_key: str | None = None,
-        shortcode: str = "22222",
-    ) -> None:
-        self.killswitch = killswitch
-        self.provider = provider if api_key and killswitch.enabled else "sink"
-        self.username = username
-        self.api_key = api_key
-        self.shortcode = shortcode
-
-    def send(self, *, to: str, body: str, trace_id: UUID | str, draft_approved: bool = False) -> SmsResult:
-        tid = str(trace_id)
-        effective_to = self.killswitch.route_sms(to, tid)
-        is_draft = not (self.killswitch.enabled and draft_approved)
-        prefix = "[DRAFT] " if is_draft else ""
-
-        parts = _split_160(body, prefix=prefix)
-        if any(len(p) > _SMS_MAX for p in parts):
-            raise SmsBodyTooLong(f"part exceeds {_SMS_MAX} chars")
-
-        with tracing.span("sms.send", provider=self.provider, trace_id=tid):
-            time.sleep(0.06)
-            if self.provider == "sink":
-                self._write_sink(effective_to, to, parts, is_draft, tid)
-            else:
-                self._send_at(effective_to, parts)
-
-        return SmsResult(
-            trace_id=tid, to_effective=effective_to, to_intended=to,
-            provider=self.provider, parts=parts, draft=is_draft,
+def _validate_body(body: str) -> None:
+    if len(body) > MAX_BODY_CHARS:
+        raise PolicyViolation(
+            f"SMS body length {len(body)} > {MAX_BODY_CHARS} char limit. "
+            "SMS is warm-scheduling only; long-form content belongs in email."
         )
-
-    def _write_sink(self, effective_to: str, intended_to: str, parts: list[str], draft: bool, tid: str) -> None:
-        _SINK.parent.mkdir(parents=True, exist_ok=True)
-        rec = {
-            "channel": "sms",
-            "to_effective": effective_to,
-            "to_intended": intended_to,
-            "shortcode": self.shortcode,
-            "parts": parts,
-            "draft": draft,
-            "trace_id": tid,
-            "sent_at": tracing._now_iso(),  # type: ignore[attr-defined]
-        }
-        with _SINK.open("a") as f:
-            f.write(json.dumps(rec) + "\n")
-
-    def _send_at(self, to: str, parts: list[str]) -> None:
-        body = "\n".join(parts)
-        with httpx.Client(timeout=30) as c:
-            r = c.post(
-                "https://api.sandbox.africastalking.com/version1/messaging",
-                headers={"apiKey": self.api_key or "", "Accept": "application/json"},
-                data={"username": self.username, "to": to, "message": body, "from": self.shortcode},
-            )
-            r.raise_for_status()
+    if not body.isascii():
+        raise PolicyViolation("SMS body must be ASCII (no emoji, no extended chars).")
+    low = body.lower()
+    for phrase in _FORBIDDEN_WORDS:
+        if phrase in low:
+            raise PolicyViolation(f"SMS body contains marketing language: {phrase!r}")
 
 
-_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
+def send(to: str, payload: SmsPayload) -> tuple[str, str]:
+    _validate_body(payload.body)
+    if settings.AT_API_KEY and settings.AT_USERNAME:
+        return _send_africas_talking(to, payload)
+    return _send_local_sink(to, payload)
 
 
-def _split_160(body: str, *, prefix: str = "") -> list[str]:
-    """Split on sentence boundaries, then pack into ≤160-char parts with (i/n) markers."""
-    body = body.strip()
-    if len(prefix + body) <= _SMS_MAX:
-        return [prefix + body]
+def _send_africas_talking(to: str, payload: SmsPayload) -> tuple[str, str]:
+    import httpx
 
-    sentences = [s for s in _SENT_SPLIT.split(body) if s]
-    chunks: list[str] = []
-    cur = prefix
-    for s in sentences:
-        # Reserve ~7 chars for " (i/n)" marker.
-        if len(cur) + len(s) + 8 <= _SMS_MAX:
-            cur = (cur + " " + s).strip() if cur.strip() != prefix.strip() else prefix + s
-        else:
-            if cur.strip():
-                chunks.append(cur.strip())
-            cur = prefix + s
-    if cur.strip():
-        chunks.append(cur.strip())
-    total = len(chunks)
-    return [f"{c} ({i+1}/{total})" for i, c in enumerate(chunks)]
+    data = {
+        "username": settings.AT_USERNAME,
+        "to": to,
+        "message": payload.body,
+    }
+    if settings.AT_SHORT_CODE:
+        data["from"] = settings.AT_SHORT_CODE
+    headers = {
+        "apiKey": settings.AT_API_KEY,
+        "Accept": "application/json",
+    }
+    base = (
+        "https://api.sandbox.africastalking.com/version1/messaging"
+        if settings.AT_USERNAME == "sandbox"
+        else "https://api.africastalking.com/version1/messaging"
+    )
+    r = httpx.post(base, data=data, headers=headers, timeout=30)
+    r.raise_for_status()
+    resp = r.json().get("SMSMessageData", {}).get("Recipients", [])
+    mid = resp[0].get("messageId", "") if resp else ""
+    return mid, "africas_talking"
+
+
+def _send_local_sink(to: str, payload: SmsPayload) -> tuple[str, str]:
+    path = Path(settings.LOCAL_SINK_DIR) / "sms.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    message_id = f"local-{uuid.uuid4().hex[:12]}"
+    record: dict[str, Any] = {
+        "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "message_id": message_id,
+        "to": to,
+        "from": settings.AT_SHORT_CODE,
+        "body": payload.body,
+        "thread_id": payload.thread_id,
+        "trace_id": payload.trace_id,
+    }
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+    return message_id, "local_sink"

@@ -1,0 +1,26 @@
+You are composing a warm reply to an ENGAGED prospect who has invited
+Tenacious to continue the conversation.
+
+{{STYLE_MARKERS}}
+
+ENGAGED REPLY TEMPLATE:
+- Acknowledge specifically what the prospect said.
+- Propose ONE next step: either the Cal.com discovery link or two specific
+  time slots (in their timezone, with an overlap constraint of 3 hours).
+- Max 150 words.
+
+CONTEXT:
+- Prospect reply: {{REPLY_TEXT}}
+- Their timezone: {{PROSPECT_TIMEZONE}}.
+- Cal.com discovery link: {{CAL_LINK}}.
+- Two suggested slots: {{SLOT_1}} and {{SLOT_2}} (both in prospect TZ, with
+  3+ hours overlap with Africa/Addis_Ababa).
+
+TASK:
+Compose ONE reply as JSON:
+
+{
+  "subject": "Re: <original subject>",
+  "body_text": "<≤150 words>",
+  "proposed_slots": ["{{SLOT_1}}", "{{SLOT_2}}"]
+}

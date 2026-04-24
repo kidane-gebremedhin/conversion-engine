@@ -1,151 +1,124 @@
 # 08 — HubSpot Integration
 
-**Source:** Challenge document — "The Production Stack" (CRM row), "Act II — Required integrations".
+Every conversation event the agent emits writes to HubSpot through the Model Context Protocol (MCP) server. HubSpot is the operational system of record for the conversation; Langfuse is the trace-and-cost record. Both must be consistent.
 
-## 1. Provider
+## Setup
 
-**HubSpot Developer Sandbox** — free. Rate limit 100 API calls per 10 s.
+- **Provider**: HubSpot Developer Sandbox app (free, no credit card). App is created on Day 0; app ID + private app token recorded in `.env`.
+- **MCP server**: HubSpot's official MCP server (installed per [HubSpot MCP docs](https://developers.hubspot.com/)). 100 API calls per 10 seconds.
+- **Authentication**: private-app token (`HUBSPOT_PRIVATE_APP_TOKEN`), never committed. OAuth is not used.
 
-The agent talks to HubSpot over an **in-repo MCP server** (`agent/integrations/hubspot_mcp_server.py`, stdio transport) that wraps the Private-App REST API. The agent process spawns this server as a subprocess; the client (`HubSpotClient`) speaks MCP over stdio to it. HubSpot's official remote MCP server (`https://mcp.hubspot.com`) is not used because it requires OAuth 2.1 + PKCE (user-interactive), and no community server covers the `Deal` + `Conversation Event` surface we need. See [__plans/00-decisions.md O8](../__plans/00-decisions.md).
+## Configuration (env)
 
-## 2. Object model
+| Env var | Purpose |
+|---|---|
+| `HUBSPOT_BASE_URL` | e.g., `https://api.hubapi.com` (configurable for mock vs. live) |
+| `HUBSPOT_PRIVATE_APP_TOKEN` | Auth token |
+| `HUBSPOT_APP_ID` | App identifier |
+| `HUBSPOT_MCP_SERVER_URL` | MCP server endpoint |
+| `HUBSPOT_PORTAL_ID` | Developer sandbox portal |
+| `HUBSPOT_OWNER_ID_DEFAULT` | Default owner for created contacts |
+| `HUBSPOT_DEAL_PIPELINE_ID` | Pipeline for discovery-booked deals |
 
-We use three standard object types plus one custom association record.
+## Custom properties
 
-### Company
-Mapped 1-to-1 from Crunchbase ODM.
+Created once on Day 0 via `agent/hubspot/schema.py`. All custom properties are prefixed `tenacious_` so they are visible and removable in one filter.
 
-| Field | Source | Custom property name |
-|-------|--------|----------------------|
-| `name` | `CrunchbaseRecord.name` | standard |
-| `domain` | `CrunchbaseRecord.domain` | standard |
-| `industry` | `CrunchbaseRecord.industries[0]` | standard |
-| `numberofemployees` | `CrunchbaseRecord.employee_count_range` | standard |
-| `country` | `CrunchbaseRecord.country` | standard |
-| `crunchbase_uuid` | `CrunchbaseRecord.uuid` | `convergine_crunchbase_uuid` (custom, required) |
-| `icp_segment` | `icp_classification.segment` (int or null) | `convergine_icp_segment` |
-| `icp_mode` | `confident` \| `abstain` | `convergine_icp_mode` |
-| `icp_confidence` | float | `convergine_icp_confidence` |
-| `ai_maturity_score` | 0–3 | `convergine_ai_maturity_score` |
-| `ai_maturity_confidence` | float | `convergine_ai_maturity_confidence` |
-| `enrichment_timestamp` | ISO8601 | `convergine_enrichment_timestamp` |
-| `hiring_signal_brief_url` | link to cached JSON artifact | `convergine_brief_url` |
-| `competitor_gap_brief_url` | link to cached JSON artifact | `convergine_gap_brief_url` |
+### Contact object
 
-### Contact
-A synthetic persona per prospect during the challenge week.
+| Property | Type | Purpose |
+|---|---|---|
+| `tenacious_status` | enum(`draft`, `final`, `opted_out`) | Required on every record; defaults to `draft` |
+| `tenacious_segment` | enum(`segment_1_series_a_b`, `segment_2_mid_market_restructure`, `segment_3_leadership_transition`, `segment_4_specialized_capability`, `abstain`) | ICP classification |
+| `tenacious_segment_confidence` | number (0–1) | From the hiring signal brief |
+| `tenacious_ai_maturity_score` | enum(`0`, `1`, `2`, `3`) | From AI-maturity scoring |
+| `tenacious_ai_maturity_confidence` | enum(`high`, `medium`, `low`) | Confidence in the score |
+| `tenacious_outreach_status` | enum(`never_contacted`, `cold_1_sent`, `cold_2_sent`, `cold_3_sent`, `warm_active`, `booked`, `opted_out`, `parked`) | Thread state |
+| `tenacious_last_brief_generated_at` | datetime | Freshness check |
+| `tenacious_hiring_signal_brief_url` | string | Link to brief file in repo / storage |
+| `tenacious_competitor_gap_brief_url` | string | Link to brief file in repo / storage |
+| `tenacious_enrichment_sources_checked` | string (JSON) | Serialized `data_sources_checked` array |
+| `tenacious_honesty_flags` | multi-enum | All fired honesty flags |
+| `tenacious_bench_gap_detected` | bool | Mirror of `hiring_signal_brief.bench_to_brief_match.bench_available == false` |
+| `tenacious_kill_switch_state` | enum(`sink`, `live`) | The kill-switch state at time of last send |
+| `tenacious_trace_id_latest` | string | Latest Langfuse trace ID |
 
-| Field | Source | Custom property name |
-|-------|--------|----------------------|
-| `email` | `<slug>@sink.convergine.local` | standard |
-| `firstname` / `lastname` | synthetic | standard |
-| `jobtitle` | inferred role (CTO / VP Eng / Founder) | standard |
-| `associatedcompanyid` | HubSpot company id | association |
-| `preferred_channel` | `email` \| `sms` | `convergine_preferred_channel` |
-| `synthetic` | always `true` during the week | `convergine_synthetic` |
+### Deal object
 
-### Deal
-Opened when a discovery call is booked.
+Created on discovery-call booking.
 
-| Field | Source |
-|-------|--------|
-| `dealname` | `Convergine discovery – {{ company.name }}` |
-| `pipeline` | `default` |
-| `dealstage` | `appointmentscheduled` |
-| `amount` | expected ACV midpoint for the assigned segment |
-| `closedate` | +90 days from booking |
-| `convergine_segment` | segment id |
-| `convergine_thread_id` | thread uuid |
+| Property | Type | Purpose |
+|---|---|---|
+| `tenacious_discovery_call_scheduled_at` | datetime | Cal.com booking time (UTC) |
+| `tenacious_discovery_call_timezone_prospect` | string | IANA timezone |
+| `tenacious_delivery_lead_email` | string | Assigned human |
+| `tenacious_context_brief_url` | string | The markdown context brief attached |
+| `tenacious_segment_at_booking` | enum | Snapshot of segment at booking time |
+| `tenacious_evidence_graph_id` | string | Cross-ref for memo |
 
-### Conversation Event (custom)
-Append-only log. One row per `agent.integrations.hubspot_mcp.log_event` call.
+### Engagement types
 
-| Field | Type |
-|-------|------|
-| `event_id` | UUID |
-| `contact_id` | HubSpot ref |
-| `company_id` | HubSpot ref |
-| `event_type` | see [06 §3 LogCrmInput](06-agent-design.md) |
-| `channel` | `email` \| `sms` \| `voice` \| `system` |
-| `trace_id` | Langfuse trace reference |
-| `payload_json` | full event payload |
-| `draft` | boolean, mirrors `X-Convergine-Draft` header |
-| `created_at` | ISO8601 |
+Every conversation event is written as a HubSpot **engagement** with these canonical types:
 
-## 3. MCP server + client
+| Engagement type | When created | Associations |
+|---|---|---|
+| `EMAIL` | Every outbound email draft sent; every inbound reply received | Contact |
+| `NOTE` | Brief attachments, tone-check scores, policy flags | Contact |
+| `TASK` | Human-handoff triggered | Contact + Deal |
+| `MEETING` | Cal.com booking confirmed | Contact + Deal |
+| `CALL` | Voice-rig interaction (bonus) | Contact + Deal |
 
-### Server — `agent/integrations/hubspot_mcp_server.py`
-FastMCP server, stdio transport. Exposes the following tools (names are MCP-callable verbatim):
+## Conversation event contracts
 
-| Tool | Purpose |
-|------|---------|
-| `upsert_company` | Create or update a Company keyed by `convergine_crunchbase_uuid`. |
-| `find_company_by_crunchbase_uuid` | Return the existing HubSpot company id or null. |
-| `upsert_contact` | Create or update a Contact keyed by email; associate to `company_id`. |
-| `create_deal` | Create a Deal and associate it to the given company + contact. |
-| `advance_deal_stage` | Update the `dealstage` property on an existing deal. |
-| `log_event` | Append a Conversation Event record (custom object); idempotent on `event_id`. |
+`agent/hubspot/events.py` exposes one function per event:
 
-All tools read `HUBSPOT_PRIVATE_APP_TOKEN` from env. The Conversation Event object type is `HUBSPOT_CONVERSATION_EVENT_OBJECT_TYPE` (default `convergine_conversation_event`) and is provisioned by `scripts/hubspot_bootstrap.py`.
+- `upsert_contact(prospect) -> contact_id`
+- `attach_brief(contact_id, brief_type, brief_json, brief_url)` — one NOTE per brief, with a structured JSON body.
+- `record_outbound(contact_id, draft, provider_message_id, trace_id)` — creates an EMAIL engagement with the subject/body, tone-check scores, and draft flag.
+- `record_inbound(contact_id, reply, classification, trace_id)` — creates an EMAIL engagement with the classification result.
+- `create_handoff_task(contact_id, reason, delivery_lead_email, context_brief_md)` — TASK engagement.
+- `record_booking(contact_id, cal_booking)` — creates the MEETING engagement and the Deal.
+- `mark_opted_out(contact_id, reason)` — sets `tenacious_outreach_status=opted_out` and `tenacious_status=opted_out`.
 
-Run standalone: `python -m agent.integrations.hubspot_mcp_server` (stdio) or `--http` for Streamable HTTP on `:4000`.
+Every function:
 
-### Client — `agent/integrations/hubspot_mcp.py`
-```python
-class HubSpotClient:
-    def __init__(self, *, mcp_url: str | None = None, token: str | None = None): ...
-    # mode = mcp | rest | local  (auto: mcp if token else local; override via HUBSPOT_CLIENT_MODE)
+1. Rate-limits at 100 calls per 10s (token bucket in-memory).
+2. Retries on 429 with exponential backoff (max 3 retries, then dead-letter to `eval/hubspot_dead_letter.jsonl`).
+3. Emits a Langfuse tool-span for the call.
 
-    def upsert_company(self, c: CompanyUpsert) -> str: ...
-    def find_company_by_crunchbase_uuid(self, uuid: str) -> str | None: ...
-    def upsert_contact(self, contact: ContactUpsert) -> str: ...
-    def create_deal(self, deal: DealCreate) -> str: ...
-    def advance_deal_stage(self, deal_id: str, stage: str) -> None: ...
-    def log_event(self, ev: ConversationEvent) -> None: ...   # idempotent on event_id
-    def close(self) -> None: ...                              # shuts down MCP subprocess
-```
+## Every conversation event → HubSpot
 
-In `mcp` mode the client spawns the server as a subprocess and maintains a persistent MCP session over stdio (background asyncio loop in a daemon thread). `rest` mode calls `hubspot_rest.py` functions directly. `local` mode writes JSON under `data/hubspot_local/`.
+**Invariant** (enforced by code review, probe-tested in Act III): for every message the agent sends or receives, there is exactly one HubSpot engagement with a matching `trace_id`. The probe library includes a consistency check that replays traces against HubSpot queries to detect drift.
 
-Wrap every call in:
-- Exponential back-off (max 3 retries) for 429s.
-- Langfuse span `hubspot.<op>` with `rate_limit_remaining` tag.
-- Circuit-breaker: if 3 consecutive 5xx within 30 s, pause outbound pipeline and alert.
+## Data minimization in HubSpot
 
-## 4. Idempotency
+Per Rule 7 in `data_handling_policy.md`:
 
-- `event_id` is a UUID generated once per state transition. MCP `log_event` deduplicates on `event_id`.
-- `upsert_company`, `upsert_contact` use their natural keys (`crunchbase_uuid`, `email`) to avoid duplicates.
+- **Log**: first name, email, company, public LinkedIn URL, segment, confidence scores, brief URLs, trace IDs, message contents (the thread).
+- **Do not log**: full PII beyond first name + email (no home address, no personal phone unless the prospect shared it explicitly for scheduling), payment info, HIPAA-sensitive or GDPR-health data.
 
-## 5. Rate-limit budget
+When uncertain, default to not logging.
 
-100 calls per 10 s. A full COLD → BOOKED flow emits approximately:
+## Draft marking
 
-| Step | Calls |
-|------|-------|
-| `upsert_company` | 1 |
-| `upsert_contact` | 1 |
-| `log_event` × conversation turns | 4–8 |
-| `create_deal` + `advance_deal_stage` × 2 | 3 |
-| **Total per prospect** | **9–13** |
+Every contact and deal record created during the challenge week carries `tenacious_status = "draft"`. The Tenacious executive team reserves the right to redact any such record from the memo. Draft marking is **not** removed on booking; the `MEETING` engagement is also draft until program-staff review.
 
-Headroom: > 7× at saturation. Not a bottleneck.
+## Interim-submission requirement
 
-## 6. Draft marking
+The interim PDF (Wednesday) must include a HubSpot screenshot showing one synthetic prospect's contact record with all custom properties populated, enrichment timestamps present, and the `tenacious_status=draft` flag visible.
 
-Every `log_event` with `draft == true` is distinguishable in the HubSpot UI by a filtered view (`convergine_draft = true`). The memo + Skeptic's Appendix references this filter as the quarantine for any pre-approval outbound.
+## Final-submission demo requirements
 
-## 7. Demo-video expectations (interim + final)
+The demo video must show, in real time:
 
-- Screenshot of a populated **Company** record showing all `convergine_*` custom properties non-null.
-- Screenshot of a **Contact** record with `associatedcompanyid` linking correctly.
-- Screenshot of a **Conversation Event** list showing all stages for one prospect.
-- `enrichment_timestamp` must be within 24 h of the demo recording.
+- Contact record populating as the enrichment pipeline completes.
+- Engagements appearing as the agent sends cold email 1, receives a reply, and responds.
+- A MEETING engagement and Deal created at Cal.com booking time.
+- The context brief visible as a NOTE attached to the Deal.
 
-## 8. Acceptance tests
+## What the integration must NOT do
 
-- Inserting a Company without `crunchbase_uuid` raises `MissingCrunchbaseUuid`.
-- A second `upsert_company` with the same `crunchbase_uuid` returns the existing company_id (no duplicate).
-- `log_event` is idempotent: calling it twice with the same `event_id` results in one row in HubSpot.
-- `create_deal` requires a linked company and contact; raises `UnlinkedDeal` otherwise.
-- Rate-limit exhaustion produces a 429 → back-off path exercised under test.
+- Modify or delete contacts created outside this repo's prefix. The custom-property prefix `tenacious_` is the safety boundary.
+- Remove `tenacious_status=draft` programmatically. Only a human clears draft status.
+- Log real customer PII under any circumstance (there is none in the sandbox, but the code path must not exist either).
+- Post to the production HubSpot portal. `HUBSPOT_PORTAL_ID` must point to the Developer Sandbox; a runtime assertion fails the process if the portal ID matches a known production pattern.

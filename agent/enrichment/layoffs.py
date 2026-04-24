@@ -1,95 +1,75 @@
-"""layoffs.fyi snapshot loader + per-company match.
+"""layoffs.fyi CSV adapter.
 
-Load from `data/layoffs_fyi/layoffs.csv`. Matching: normalised exact name
-primary, alias table fallback (`data/layoffs_fyi/aliases.yaml`), no fuzzy.
+Matches company names tolerantly (lowercase + whitespace + remove legal suffixes)
+and returns events within a rolling window.
 """
 from __future__ import annotations
 
 import csv
-import pathlib
+import datetime as dt
 import re
-from datetime import date, datetime, timedelta
 from functools import lru_cache
+from pathlib import Path
 
-import yaml
-from pydantic import BaseModel
-
-
-_CSV = pathlib.Path("data/layoffs_fyi/layoffs.csv")
-_ALIASES = pathlib.Path("data/layoffs_fyi/aliases.yaml")
+from agent.config import settings
 
 
-class LayoffEvent(BaseModel):
-    company_name: str
-    date: date
-    headcount: int | None = None
-    percentage: float | None = None
-    source_url: str | None = None
+_LEGAL_SUFFIX_RE = re.compile(
+    r"\b(inc|incorporated|ltd|limited|llc|corp|corporation|gmbh|s\.?a\.?|plc|bv|ag|sarl|co\.?|oy|aps|as)\.?$",
+    re.IGNORECASE,
+)
+
+
+def _normalize(name: str) -> str:
+    n = name.strip().lower()
+    n = re.sub(r"[^\w\s]", "", n)
+    n = _LEGAL_SUFFIX_RE.sub("", n).strip()
+    n = re.sub(r"\s+", " ", n)
+    return n
 
 
 @lru_cache(maxsize=1)
-def load_snapshot() -> list[LayoffEvent]:
-    if not _CSV.exists():
+def _load() -> list[dict[str, str]]:
+    path = Path(settings.LAYOFFS_FYI_LOCAL_PATH)
+    if not path.exists():
         return []
-    out: list[LayoffEvent] = []
-    with _CSV.open() as f:
+    rows: list[dict[str, str]] = []
+    with open(path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            try:
-                out.append(
-                    LayoffEvent(
-                        company_name=row["company"].strip(),
-                        date=datetime.strptime(row["date"], "%Y-%m-%d").date(),
-                        headcount=_int(row.get("headcount")),
-                        percentage=_float(row.get("percentage")),
-                        source_url=row.get("source") or None,
-                    )
-                )
-            except (KeyError, ValueError):
-                continue
-    return out
+            rows.append(row)
+    return rows
 
 
-@lru_cache(maxsize=1)
-def _aliases() -> dict[str, str]:
-    if not _ALIASES.exists():
-        return {}
-    data = yaml.safe_load(_ALIASES.read_text()) or {}
-    return {k.lower(): v.lower() for k, v in data.items()}
-
-
-def _norm(name: str) -> str:
-    name = name.lower().strip()
-    name = re.sub(r"\b(inc|incorporated|corp|corporation|ltd|llc|limited|co)\.?\b", "", name)
-    return re.sub(r"[^a-z0-9]+", "", name)
-
-
-def find_by_company(name: str, *, since_days: int = 120, today: date | None = None) -> list[LayoffEvent]:
-    today = today or date.today()
-    target = _norm(name)
-    alias_hit = _aliases().get(name.lower())
-    alias_norm = _norm(alias_hit) if alias_hit else None
-    out: list[LayoffEvent] = []
-    for ev in load_snapshot():
-        if (today - ev.date) > timedelta(days=since_days):
+def within_window(
+    company_name: str, window_days: int = 120, today: dt.date | None = None
+) -> dict[str, object] | None:
+    """Return the most recent layoff event within `window_days` for the company."""
+    today = today or dt.date.today()
+    target = _normalize(company_name)
+    best: dict[str, object] | None = None
+    for row in _load():
+        if _normalize(row.get("company", "")) != target:
             continue
-        n = _norm(ev.company_name)
-        if n == target or (alias_norm and n == alias_norm):
-            out.append(ev)
-    return out
+        try:
+            event_date = dt.date.fromisoformat(row["date"])
+        except (ValueError, KeyError):
+            continue
+        delta = (today - event_date).days
+        if 0 <= delta <= window_days:
+            try:
+                record: dict[str, object] = {
+                    "date": event_date,
+                    "headcount_reduction": int(row.get("headcount_reduction", "0") or 0),
+                    "percentage_cut": float(row.get("percentage_cut", "0") or 0),
+                    "source_url": row.get("source_url", ""),
+                }
+            except ValueError:
+                continue
+            if best is None or record["date"] > best["date"]:  # type: ignore[operator]
+                best = record
+    return best
 
 
-def _int(x: str | None) -> int | None:
-    try:
-        return int(x) if x not in (None, "", "N/A") else None
-    except ValueError:
-        return None
-
-
-def _float(x: str | None) -> float | None:
-    try:
-        if not x or x in ("", "N/A"):
-            return None
-        return float(x.rstrip("%")) / (100.0 if x.endswith("%") else 1.0)
-    except ValueError:
-        return None
+def invalidate_cache() -> None:
+    _load.cache_clear()

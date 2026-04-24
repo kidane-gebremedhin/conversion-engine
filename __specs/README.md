@@ -1,49 +1,58 @@
-# Conversion Engine — Spec Index
+# Conversion Engine — Specifications Index
 
-Production-grade specifications for the **Tenacious Consulting and Outsourcing Conversion Engine**: an automated lead-generation and conversion agent that finds prospects from public data, grounds the conversation in a hiring-signal + competitor-gap brief, runs a nurture sequence, and books discovery calls.
+This directory is the engineering specification for the **Conversion Engine** — an automated lead-generation and conversion system for Tenacious Consulting and Outsourcing, built for TRP1 Week 10.
 
-> **Interim submission: Wed 22 Apr 2026, 21:00 UTC — TODAY.**
-> **Final submission: Sat 25 Apr 2026, 21:00 UTC.**
-> See [17-deliverables-checklist.md](17-deliverables-checklist.md) for scope per deadline.
+The system finds new prospective clients from public data, qualifies them against a real intent signal, runs a nurture sequence, and books discovery calls with a Tenacious delivery lead. Qualification is the filter; **research is the value proposition**.
 
-## Read order
+## Source of truth
+
+Every specification in this directory derives from, and must remain consistent with, these canonical sources:
+
+1. The TRP1 Week 10 Challenge Brief — *Conversion Engine for Sales Automation*.
+2. The *Draft Tenacious Sales Materials Template* — templates for the four internal artifacts the agent produces (delivery bench summary, hiring signal brief, competitor gap brief, discovery call context brief) and the pricing / style / ICP formalizations.
+3. The seed materials in `tenacious_sales_data/` (ICP, style guide, baseline numbers, bench summary, case studies, email sequences, discovery transcripts, pricing sheet, sales deck).
+4. The policy files in `tenacious_sales_data/policy/` (data handling, acknowledgement) and `LICENSE.md`.
+5. The JSON Schemas in `tenacious_sales_data/schemas/`.
+
+If a spec conflicts with a source above, the source wins and the spec must be corrected.
+
+## Reading order
 
 | # | Spec | What it covers |
-|---|------|----------------|
-| 00 | [overview](00-overview.md) | Vision, scope, non-goals, success criteria |
-| 01 | [architecture](01-architecture.md) | Component topology, sequence diagrams |
-| 02 | [repo-structure](02-repo-structure.md) | Directory layout, module inventory |
-| 03 | [icp-and-segments](03-icp-and-segments.md) | 4 ICP segments, classifier with abstention |
-| 04 | [data-sources](04-data-sources.md) | Crunchbase ODM, layoffs.fyi, job posts, τ²-Bench |
-| 05 | [signal-enrichment-pipeline](05-signal-enrichment-pipeline.md) | Hiring signal brief, AI maturity score, competitor gap brief |
-| 06 | [agent-design](06-agent-design.md) | LLM agent, tools, prompts, state machine |
-| 07 | [channels](07-channels.md) | Email (primary), SMS (secondary), voice (bonus) |
-| 08 | [hubspot-integration](08-hubspot-integration.md) | CRM data model, MCP client, events |
-| 09 | [calendar-booking](09-calendar-booking.md) | Cal.com self-hosted, discovery-call flow |
-| 10 | [observability](10-observability.md) | Langfuse traces, cost attribution, invoice_summary |
-| 11 | [tau2-bench-harness](11-tau2-bench-harness.md) | Baseline, dev slice, sealed held-out evaluation |
-| 12 | [probe-library](12-probe-library.md) | 30+ adversarial probes by category |
-| 13 | [mechanism-design](13-mechanism-design.md) | Act IV method + ablations + Delta A/B/C |
-| 14 | [memo-specification](14-memo-specification.md) | Exactly-2-page decision memo layout |
-| 15 | [market-space-map](15-market-space-map.md) | Distinguished-tier stretch deliverable |
-| 16 | [data-handling-and-kill-switch](16-data-handling-and-kill-switch.md) | Policy, synthetic routing, kill-switch |
-| 17 | [deliverables-checklist](17-deliverables-checklist.md) | Interim (Wed) + Final (Sat) acceptance criteria |
-| 18 | [configuration](18-configuration.md) | Config loading, secret management |
+|---|---|---|
+| [00](00-overview.md) | Overview | Problem, goals, five-act loop, scope boundaries |
+| [01](01-architecture.md) | Architecture | Components, request/reply flow, deployment |
+| [02](02-repo-structure.md) | Repo structure | Directory layout and ownership |
+| [03](03-icp-and-segments.md) | ICP and segments | Four fixed segments, classification, abstention |
+| [04](04-data-sources.md) | Data sources | Crunchbase ODM, layoffs.fyi, job posts, τ²-Bench |
+| [05](05-signal-enrichment-pipeline.md) | Enrichment pipeline | Firmographics → briefs, AI-maturity scoring |
+| [06](06-agent-design.md) | Agent design | Composer, reply classifier, honesty constraints, handoff |
+| [07](07-channels.md) | Channels | Email (primary), SMS (warm-scheduling), Voice (bonus) |
+| [08](08-hubspot-integration.md) | HubSpot | MCP server, schema, every-event writes |
+| [09](09-calendar-booking.md) | Cal.com | Self-hosted booking, fixtures, time-zone handling |
+| [10](10-observability.md) | Observability | Langfuse traces, per-trace cost, latency |
+| [11](11-tau2-bench-harness.md) | τ²-Bench harness | Retail baseline, dev slice, held-out |
+| [12](12-probe-library.md) | Probe library | 30+ adversarial probes, categories, target failure |
+| [13](13-mechanism-design.md) | Mechanism design | Act IV mechanism, deltas A/B/C |
+| [14](14-memo-specification.md) | Memo | Two-page decision memo, evidence graph |
+| [15](15-market-space-map.md) | Market-space map | Distinguished-tier stretch deliverable |
+| [16](16-data-handling-and-kill-switch.md) | Policy enforcement | Kill-switch, scraping rules, draft marking |
+| [17](17-deliverables-checklist.md) | Deliverables | Interim (Acts I–II) and Final (Acts III–V) |
+| [18](18-configuration.md) | Configuration | Env vars, YAML config, secrets handling |
 
-## Configuration templates
+Two example artifacts accompany the specs:
 
-- [.env.example](.env.example) — all secrets and external-service configuration
-- [config.example.yaml](config.example.yaml) — application-level tunables (thresholds, model pins, rate limits)
+- [`.env.example`](.env.example) — every environment variable the system reads, with safe defaults and placeholders.
+- [`config.example.yaml`](config.example.yaml) — every operational knob (thresholds, prices, windows, model IDs, base URLs).
 
-## Guiding principles
+## Non-negotiables
 
-1. **Find the lead. Ground the conversation. Respect the brand. Ship it.** (Document closing line.)
-2. Qualification is the filter; **research is the value proposition**.
-3. **Grounded honesty is a brand constraint** — over-claiming is worse than silence.
-4. **Email is primary**, SMS is secondary for warm-lead scheduling, voice is a bonus tier.
-5. **Every numeric claim in the memo must trace to a file or published source** — fabricated Tenacious numbers are a disqualifying violation.
-6. **Default kill-switch = unset** — all outbound routes to the staff sink unless explicitly enabled.
+These are enforced by spec and by code; violating any is grounds for disqualification from the challenge:
 
-## Traceability
-
-Each spec header carries a **Source:** field pointing to the section of the challenge document it implements. The [17-deliverables-checklist.md](17-deliverables-checklist.md) cross-references every required artifact to the spec that defines it.
+- **Kill switch defaults to unset.** Every outbound routes to the staff sink until `TENACIOUS_OUTBOUND_ENABLED=1` is set deliberately.
+- **No real customer contact.** Every prospect the system addresses during the challenge week is synthetic.
+- **Grounded or silent.** The agent never asserts a signal it cannot cite; low confidence forces softer language, abstention, or handoff.
+- **No bench over-commitment.** The agent never commits capacity that `bench_summary.json` does not show.
+- **No fabricated Tenacious numbers.** Every numeric claim in the memo traces to `baseline_numbers.md`, `bench_summary.json`, a trace file, or a cited public source.
+- **No hard-coded secrets, base URLs, model IDs, or prices.** Every such value is pulled from environment or YAML config, as defined in [spec 18](18-configuration.md).
+- **Draft marking on every Tenacious-branded output.** Emails carry `X-Tenacious-Status: draft`; HubSpot records carry `tenacious_status=draft`.

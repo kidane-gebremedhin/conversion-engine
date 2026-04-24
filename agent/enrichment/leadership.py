@@ -1,39 +1,63 @@
-"""Leadership-change detection — Crunchbase key-people diff fixture.
+"""Leadership-change detection.
 
-For the interim, we read `data/leadership_events/<uuid>.json` if present.
-Shape: `{"role": "CTO", "name": "...", "start_date": "2026-02-12", "source_url": "..."}`
-or `null` if no change.
+Primary source: the Crunchbase ODM sample (leadership[].is_new_in_window).
+Secondary sources (press, LinkedIn) are wired through the same interface
+when available.
 """
 from __future__ import annotations
 
-import json
-import pathlib
-from datetime import date, datetime, timedelta
+import datetime as dt
+from typing import Any
 
-from pydantic import BaseModel
-
-
-_DIR = pathlib.Path("data/leadership_events")
+from agent.config import config
 
 
-class LeadershipChange(BaseModel):
-    role: str
-    name: str
-    start_date: date
-    source_url: str | None = None
+def detect(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a new leadership-change event or None.
+
+    Event shape:
+        {
+          "detected": True,
+          "role": "cto" | "vp_engineering" | ...,
+          "new_leader_name": str,
+          "started_at": date,
+          "source_url": str | None,
+        }
+
+    Returns None when no qualifying change is detected. Interim/acting leaders
+    are excluded per the Segment 3 disqualifier in icp_definition.md.
+    """
+    window_days = int(config.get("leadership.window_days", 90))
+    today = dt.date.today()
+
+    for leader in record.get("leadership", []) or []:
+        if leader.get("is_interim"):
+            continue
+        if leader.get("role") not in ("cto", "vp_engineering"):
+            continue
+        started_at_str = leader.get("started_at")
+        if not started_at_str:
+            continue
+        try:
+            started_at = dt.date.fromisoformat(started_at_str)
+        except ValueError:
+            continue
+        if (today - started_at).days > window_days:
+            continue
+        return {
+            "detected": True,
+            "role": leader["role"],
+            "new_leader_name": leader.get("name", "unknown"),
+            "started_at": started_at,
+            "source_url": None,
+        }
+
+    return None
 
 
-def detect(crunchbase_uuid: str, *, since_days: int = 90, today: date | None = None) -> LeadershipChange | None:
-    p = _DIR / f"{crunchbase_uuid}.json"
-    if not p.exists():
-        return None
-    data = json.loads(p.read_text())
-    if not data:
-        return None
-    start = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
-    today = today or date.today()
-    if (today - start) > timedelta(days=since_days):
-        return None
-    return LeadershipChange(
-        role=data["role"], name=data["name"], start_date=start, source_url=data.get("source_url")
-    )
+def has_interim_current(record: dict[str, Any]) -> bool:
+    """True if any current leadership entry is interim/acting."""
+    for leader in record.get("leadership", []) or []:
+        if leader.get("is_interim"):
+            return True
+    return False

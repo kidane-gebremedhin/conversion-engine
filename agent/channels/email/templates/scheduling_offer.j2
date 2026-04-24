@@ -1,16 +1,14 @@
-Subject: Re: {{ prior_subject }}
+Subject: {{ subject }}
 
-Hi {{ prospect.contact_first }},
+{{ body_text }}
 
-Great — here's the scheduling link:
-{{ calcom_url }}
+Suggested slots (your local time, {{ prospect.timezone }}):
+- {{ slot_1 }}
+- {{ slot_2 }}
 
-Two slots that should work in your timezone ({{ prospect.contact_timezone }}):
-  - {{ slot_1 }}
-  - {{ slot_2 }}
+Or pick any time that works: {{ cal_link }}
 
-If neither fits, the link shows all open slots this week and next.
-
-— Tenacious
-
-— draft: pending Tenacious delivery-lead approval
+{{ sender.first_name }}
+{{ sender.title }}
+Tenacious Intelligence Corporation
+gettenacious.com

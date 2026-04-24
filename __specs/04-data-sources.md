@@ -1,155 +1,112 @@
 # 04 — Data Sources
 
-**Source:** Challenge document — "The Data", "Restriction" notes, "Data Handling Policy".
+Four data sources ground the enrichment pipeline and τ²-Bench harness. **No source requires a credit card; no source requires a US phone number; no source requires login.** Every source URL, API key, and freshness window is in `.env` or `config.yaml` — nothing is hard-coded.
 
-## 1. Summary
+## Data source 1 — Crunchbase ODM sample
 
-| # | Source | License | Role | Path |
-|---|--------|---------|------|------|
-| 1 | Crunchbase ODM sample (1 001 records) | Apache 2.0 | Primary firmographics; every lead references a record | `data/crunchbase_odm/companies.json` |
-| 2 | layoffs.fyi | CC-BY | Layoff signal → segment 2 classification | `data/layoffs_fyi/layoffs.csv` |
-| 3 | Public job posts (BuiltIn / Wellfound / LinkedIn) | Public HTML; respect `robots.txt` | Hiring velocity signal | `data/jobposts_snapshot/` |
-| 4 | τ²-Bench (retail + telecom) | MIT (Sierra Research) | Ground-truth conversation benchmark | `eval/tau2-bench/` |
+| Field | Value |
+|---|---|
+| **Provider** | luminati-io (Apache-2.0 license) |
+| **URL (configurable)** | `CRUNCHBASE_ODM_URL` in `.env` — default: `github.com/luminati-io/Crunchbase-dataset-samples` |
+| **Records** | 1,001 real Crunchbase company records |
+| **Fields** | Firmographics (name, domain, HC band, HQ), funding rounds, founders, industry categories, locations |
+| **Use** | Primary firmographic source. **Every HubSpot lead object must reference a Crunchbase record.** |
+| **Freshness** | Frozen snapshot downloaded on Day 0 and stored in `data/crunchbase_odm_sample.json`. No live lookups. |
 
-Supporting public signals (not primary sources, but read by the enrichment pipeline):
-- Crunchbase press-release feed for funding + leadership events.
-- BuiltWith / Wappalyzer public endpoints for tech stack.
-- Public GitHub org pages for AI-maturity commits signal.
-- Company team pages + LinkedIn public pages for "Head of AI" / "VP Data" detection.
+Implementation (`agent/enrichment/crunchbase.py`):
 
-## 2. Crunchbase ODM sample
+- Loads the JSON once on process start; exposes a `lookup_by_domain(domain)` function backed by an in-memory dict.
+- Normalizes domain casing (lowercase, strip `www.`).
+- If the domain is not in the sample, the enrichment pipeline returns a `no_data` status and the prospect is logged to `data/unmatched_domains.log`; no outreach fires.
 
-### What it is
-1 001 real Crunchbase company records with firmographics, funding history, founders, industry, location.
+## Data source 2 — layoffs.fyi
 
-### Where to get it
-`https://github.com/luminati-io/Crunchbase-dataset-samples`
+| Field | Value |
+|---|---|
+| **Provider** | layoffs.fyi (CC-BY license) |
+| **URL (configurable)** | `LAYOFFS_FYI_URL` — layoffs.fyi downloadable CSV or HuggingFace mirror |
+| **Records** | Structured dataset of tech-industry layoffs, updated weekly |
+| **Fields** | `company`, `date`, `headcount_reduction`, `percentage_cut`, `source_url` |
+| **Use** | Layoff signal for Segment 2 classification; disqualifier for Segment 1 (>15% cut in 90d) |
+| **Freshness** | Downloaded weekly. Frozen snapshot as `data/layoffs_fyi_2026_q1.csv`. |
 
-### Loader contract
-```python
-# agent/enrichment/crunchbase.py
-class CrunchbaseRecord(BaseModel):
-    uuid: str
-    name: str
-    domain: HttpUrl | None
-    country: str
-    region: str | None
-    industries: list[str]
-    founded_on: date | None
-    employee_count_range: str | None   # e.g., "11-50"
-    total_funding_usd: int | None
-    last_funding_type: str | None
-    last_funding_amount_usd: int | None
-    last_funding_date: date | None
-    founders: list[str]
-    ceo: str | None
-    linkedin_url: HttpUrl | None
-    crunchbase_url: HttpUrl
-    raw: dict                           # original JSON row, for audit
+Implementation (`agent/enrichment/layoffs.py`):
 
-def load_all() -> list[CrunchbaseRecord]: ...
-def by_domain(domain: str) -> CrunchbaseRecord | None: ...
-def funding_events(uuid: str, since_days: int = 180) -> list[FundingEvent]: ...
-```
+- CSV is parsed on first lookup per-process, indexed by normalized company name. The `company` column is matched using: exact → lowercase → token-set-ratio ≥ 0.9 with domain cross-check.
+- `within_window(layoff_date, window_days)` returns events within a rolling window (default `120` for Segment 2, `90` for Segment 1 disqualifier — both in `config.yaml`).
 
-### Constraints
-- Every HubSpot `Company` object **must** carry `crunchbase_uuid` as a custom property. This is non-optional — it is the evidence-graph root for every lead.
-- No record may be mutated in place; enriched fields live in the brief, not in the ODM file.
+## Data source 3 — Public job posts
 
-## 3. layoffs.fyi
+| Field | Value |
+|---|---|
+| **Provider** | BuiltIn, Wellfound, LinkedIn company pages |
+| **Scraping tool** | Playwright + FastAPI wrapper (`TinyFish` alternative acceptable) |
+| **URLs (configurable)** | `BUILTIN_BASE_URL`, `WELLFOUND_BASE_URL`, `LINKEDIN_JOBS_BASE_URL` |
+| **Use** | Hiring velocity signal (open-roles today vs. 60 days ago). AI-adjacent role count for AI-maturity scoring. |
+| **Freshness** | Frozen April 2026 snapshot in `data/job_posts_snapshot_2026-04-01.json`; an optional small live crawl of **no more than 200 companies** during the challenge week. |
 
-### What it is
-Weekly-updated CC-BY CSV — company name, date, headcount impacted, percentage cut, source link.
+Scraping rules (policy-enforced — see [spec 16](16-data-handling-and-kill-switch.md)):
 
-### Where to get it
-- Canonical: `https://layoffs.fyi` (downloadable CSV on the page).
-- HuggingFace mirror: search `layoffs.fyi` on HF datasets.
-- For this project, snapshot into `data/layoffs_fyi/layoffs.csv` at week start and treat as immutable.
+- Public pages only. No login. No stored cookies or session tokens for gated content.
+- Captchas are a hard stop. If a captcha appears, mark `data_sources_checked[source].status = "rate_limited"` and move on.
+- `robots.txt` is checked on first contact per domain and cached for 24 hours.
+- Rate limit: **at least 2 seconds between requests to the same domain; at most 3 concurrent tabs per domain**.
+- User agent: `TRP1-Week10-Research (trainee@trp1.example)` — configurable via `SCRAPER_USER_AGENT`, never impersonates a browser or a named crawler.
+- Live-crawl cap: 200 companies per challenge week, tracked in `data/crawl_counter.json`.
 
-### Loader contract
-```python
-class LayoffEvent(BaseModel):
-    company_name: str
-    date: date
-    headcount: int | None
-    percentage: float | None
-    source_url: HttpUrl | None
+Velocity computation (`agent/enrichment/jobposts.py`):
 
-def load_snapshot() -> list[LayoffEvent]: ...
-def find_by_company(name: str, since_days: int = 120) -> list[LayoffEvent]: ...
-```
+- `open_roles_today = count(role.status == "open" as of latest snapshot or live fetch)`.
+- `open_roles_60_days_ago = count(role.status == "open" in the 60-day-prior snapshot)`.
+- `velocity_label ∈ {tripled_or_more, doubled, increased_modestly, flat, declined, insufficient_signal}`. Thresholds in `config.yaml`. `insufficient_signal` fires when `open_roles_today < 5` and forces "ask rather than assert" phrasing.
+- `ai_adjacent_ratio = ai_adjacent_role_count / total_role_count`. AI-adjacent roles: ML Engineer, Applied Scientist, LLM Engineer, AI Product Manager, Data Platform Engineer, MLOps Engineer. The canonical list is in `config.yaml` under `ai_maturity.ai_adjacent_titles`.
 
-### Matching strategy
-- Primary: exact normalised company-name match (lowercase, strip legal suffixes).
-- Secondary: domain match via a small hand-curated alias table (`data/layoffs_fyi/aliases.yaml`).
-- **Tertiary allowed only with manual confirmation** — fuzzy matches without review produce high false-positive rates and the agent must not over-claim restructuring on a fuzzy hit.
+## Data source 4 — τ²-Bench
 
-## 4. Public job posts
+| Field | Value |
+|---|---|
+| **Provider** | Sierra Research |
+| **URL (configurable)** | `TAU2_BENCH_REPO_URL` — default: `github.com/sierra-research/tau2-bench` |
+| **Content** | Dual-control conversational benchmark; B2B-conversational-agent reference |
+| **Partitions** | 30-task dev slice (ships with benchmark); 20-task sealed held-out (delivered by program staff) |
+| **Use** | Ground-truth reproduction (Act I), reproduction check (Act II), mechanism evaluation (Act IV) |
+| **Freshness** | Pinned git SHA in `config.yaml` under `tau2.pinned_sha` for reproducibility. |
 
-### Restrictions (HARD)
-- **Public pages only.** Do **not** log in. Do **not** bypass captchas. Respect `robots.txt`.
-- For the challenge week: prefer the **frozen early-April 2026 snapshot** in `data/jobposts_snapshot/`. Any live crawl is capped at **200 companies**.
+Retail is the closest public analog to B2B qualification conversation and is the primary evaluation domain. Telecom domain supplies useful secondary probes (time-zone edge cases, escalation phrasing).
 
-### Sources
-- BuiltIn (`builtin.com/companies/<slug>/jobs`)
-- Wellfound (`wellfound.com/company/<slug>/jobs`)
-- LinkedIn company page public job feed (unauthenticated only)
-- Company career pages (generic adapter, JSON-LD `@type=JobPosting` parsing)
+## Secondary data sources (AI-maturity scoring)
 
-### Scraper contract
-```python
-class JobPost(BaseModel):
-    company_domain: str
-    title: str
-    posted_at: date
-    location: str | None
-    department: str | None
-    role_category: Literal["engineering", "ml", "data", "design", "gtm", "ops", "other"]
-    url: HttpUrl
+Five weaker sources feed AI-maturity scoring only. These do not gate the enrichment pipeline; if any fail, `data_sources_checked` records the error and the affected `ai_maturity.justifications` entries carry `confidence: low`.
 
-def crawl(company_domain: str, *, since_days: int = 60) -> list[JobPost]: ...
-def velocity(company_domain: str, *, window_60d: int, window_60d_prior: int) -> VelocityReport: ...
-```
+| Source | Purpose | Weight in AI-maturity |
+|---|---|---|
+| BuiltWith / Wappalyzer public data | Modern data/ML stack signal | low |
+| Public GitHub org | Recent commits to model-training or inference repos | medium |
+| Company blog / press | Executive commentary on AI strategy | medium |
+| Team page | Named AI/ML leadership | high |
+| Investor letters / fundraising press | Strategic AI positioning | low |
 
-### Velocity metric
-Return `(open_roles_now, open_roles_60d_ago, ratio)`. The agent may only assert "aggressive hiring" when `open_roles_now ≥ 5` **and** `ratio ≥ 2.0`. Weaker signal → ask rather than assert (see [05 §4 confidence-aware phrasing](05-signal-enrichment-pipeline.md)).
+Configuration lives under `ai_maturity.weights` in `config.yaml`. See [spec 05](05-signal-enrichment-pipeline.md) for the scoring rubric.
 
-### AI-adjacent role filter
-Titles containing any of: `machine learning`, `ml engineer`, `applied scientist`, `research scientist`, `llm`, `ai engineer`, `data platform`, `data engineer` (with ML/AI context), `AI product manager`. Case-insensitive, word-boundary.
+## Data licensing and redistribution
 
-## 5. τ²-Bench
+Every source is either CC-BY, Apache-2.0, or public-page-with-robots-compliance. The implementation may:
 
-### What it is
-Sierra Research's dual-control conversational agent benchmark. Retail domain is our closest analog to B2B qualification; telecom supplies secondary probes.
+- Read, cache, and derive signals from these sources inside the repo for the duration of the challenge.
+- Quote source URLs in the `evidence_graph.json` and in the outreach emails (for public URLs only).
 
-### Where to get it
-`https://github.com/sierra-research/tau2-bench`
+The implementation may **not**:
 
-### Our usage
-- Clone into `eval/tau2-bench/` (submodule or pinned tag).
-- Pin retail and telecom domain versions in `config.yaml` → `eval.tau2_bench.pinned_tag`.
-- Accept program-delivered **sealed held-out partition** (20 tasks); work only on the 30-task dev slice until final.
-- Wrap the harness (`eval/harness.py`) to emit `trace_log.jsonl` to Langfuse and update `score_log.json`.
+- Commit raw layoffs.fyi or Crunchbase dumps outside `data/` with a clear CC-BY or Apache-2.0 attribution.
+- Post scraped job-post data to any public location.
+- Include named prospect contacts (even synthetic) in any committed file outside `data/synthetic_prospects.json`.
 
-### Contracts — see [11-tau2-bench-harness.md](11-tau2-bench-harness.md).
+## Freshness windows
 
-## 6. Supporting enrichment endpoints
-
-| Signal | Endpoint/source | Notes |
-|--------|-----------------|-------|
-| Leadership change | Crunchbase key-people diff + press-release scrape | Title-match list matches segments.yaml §3 |
-| Tech stack | BuiltWith public API key; Wappalyzer CLI | Gated behind `bench_check` — only stacks Tenacious bench supports are quotable |
-| GitHub org | `https://api.github.com/orgs/<slug>/repos?sort=pushed` (unauthenticated) | Used as low-weight AI-maturity signal; absence is **not** evidence of absence |
-| Executive commentary | Google programmable search over `<company> AI site:blog.<domain>` and similar; RSS of known exec-voice sources | Cached results stored in `data/briefs_cache/<uuid>/execs/` |
-
-## 7. Data handling policy (enforced at load time)
-
-- All loaders mark every record with `synthetic: bool` on egress; only synthetic records may flow to `channels.email.send` when kill-switch unset.
-- PII present in Crunchbase ODM (founder names) is **not exported** in any outbound content — the draft must refer to role ("the CEO", "the VP Engineering") unless the name is already public in the sales deck's allowlist.
-- See [16-data-handling-and-kill-switch.md](16-data-handling-and-kill-switch.md) for the full policy.
-
-## 8. Caching
-
-- Brief cache TTL: 24 h per `crunchbase_uuid`.
-- Invalidation: `make enrich PROSPECT=<uuid> --force` bypasses cache.
-- All cache writes atomic (`tmp` + rename) to tolerate crashes during enrichment.
+| Source | Refresh policy |
+|---|---|
+| Crunchbase ODM | Never during the challenge week; the snapshot is frozen. |
+| layoffs.fyi | Weekly refresh from CSV; re-downloaded each Monday morning. |
+| Public job posts | Frozen snapshot primary; live crawl of ≤200 companies across the full week if needed. |
+| τ²-Bench | Pinned git SHA; never updated mid-week. |
+| HubSpot / Cal.com / Langfuse | Live (these are our own systems, not external data). |

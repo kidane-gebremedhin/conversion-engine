@@ -1,9 +1,0 @@
-{
-  "slice_name": "held_out",
-  "domain": "retail",
-  "source": "program-delivered",
-  "size": 20,
-  "sealed": true,
-  "note": "Do not open until Day 5. No tuning code may reference this file.",
-  "tasks": []
-}

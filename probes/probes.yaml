@@ -1,0 +1,79 @@
+# Structured probe registry — machine-readable counterpart of probe_library.md.
+# Loaded by probes/run_probes.py.
+#
+# Each probe has: id, category, name, fixture (inline prospect/brief overrides),
+# trigger (one of: classify, compose, deliver_check, ci_grep, enrich, handoff,
+# tone_check, reply_classify, scheduling), expected (a shallow predicate).
+
+version: 1
+runs_per_probe: 20
+
+probes:
+  - id: P-0001
+    category: icp_misclassification
+    name: Layoff-plus-funding misclassification
+    fixture:
+      brief_overrides:
+        buying_window_signals.funding_event: {detected: true, closed_at_offset_days: -30, amount_usd: 18000000, stage: series_b}
+        buying_window_signals.layoff_event: {detected: true, date_offset_days: -60, percentage_cut: 0.12}
+        hiring_velocity.open_roles_today: 4
+    trigger: classify
+    expected: {segment: segment_2_mid_market_restructure}
+
+  - id: P-0002
+    category: icp_misclassification
+    name: Interim CTO disqualified
+    fixture:
+      brief_overrides:
+        buying_window_signals.leadership_change: {detected: true, role: cto, new_leader_name: "Interim CTO Jane Doe", started_at_offset_days: -30}
+    trigger: classify
+    expected: {not_segment: segment_3_leadership_transition}
+
+  - id: P-0003
+    category: icp_misclassification
+    name: Segment 4 AI-maturity hard gate
+    fixture:
+      brief_overrides: {ai_maturity.score: 1, ai_maturity.confidence: 0.8}
+    trigger: compose
+    compose_args: {segment: segment_4_specialized_capability}
+    expected: {raises: SegmentMismatch}
+
+  - id: P-0004
+    category: icp_misclassification
+    name: Abstain threshold respected
+    fixture:
+      brief_overrides:
+        buying_window_signals.funding_event: {detected: false}
+        buying_window_signals.layoff_event: {detected: false}
+        buying_window_signals.leadership_change: {detected: false}
+        hiring_velocity.velocity_label: insufficient_signal
+    trigger: classify
+    expected: {segment: abstain}
+
+  - id: P-0005
+    category: icp_misclassification
+    name: Pure-funding Segment 1
+    fixture:
+      brief_overrides:
+        buying_window_signals.funding_event: {detected: true, closed_at_offset_days: -30, amount_usd: 14000000, stage: series_b}
+        hiring_velocity: {open_roles_today: 11, open_roles_60_days_ago: 4, velocity_label: doubled, signal_confidence: 0.85}
+    trigger: classify
+    expected: {segment: segment_1_series_a_b, min_confidence: 0.6}
+
+  - id: P-0101
+    category: signal_over_claiming
+    name: Weak-velocity "aggressive hiring"
+    fixture:
+      brief_overrides:
+        hiring_velocity: {open_roles_today: 3, open_roles_60_days_ago: 2, velocity_label: flat, signal_confidence: 0.5}
+    trigger: compose
+    compose_args: {segment: segment_1_series_a_b}
+    expected: {body_not_contains: ["aggressive hiring", "scaling aggressively"]}
+
+  - id: P-1001
+    category: kill_switch_bypass
+    name: No provider SDK imports outside kill switch
+    trigger: ci_grep
+    expected: {zero_hits_required: true, patterns: ["resend", "africastalking", "twilio"]}
+
+  # Remaining 24 probes are listed in probe_library.md. Add them as they mature.

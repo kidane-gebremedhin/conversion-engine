@@ -1,0 +1,1 @@
+Define the plans under the __plans directory of the current directory to implement the specs under the __specs exactly as described in the the challenge document and "/home/kg/Downloads/Week 10-20260423T142140Z-3-001/Week 10/Technical Challenge/Draft Tenacious Sales Materials Template.pdf". Do not bother about the timelimes in the document though.

@@ -1,11 +1,14 @@
-Subject: Confirmed: Tenacious discovery — {{ booking.start_local }}
+Subject: Confirmed — {{ meeting.datetime_local }}
 
-Hi {{ prospect.contact_first }},
+Hi {{ prospect.first_name }},
 
-Confirmed for {{ booking.start_local }} ({{ prospect.contact_timezone }}).
+Confirmed: {{ meeting.datetime_local }} ({{ meeting.duration_minutes }} min),
+with {{ meeting.lead_name }} from our delivery team.
 
-The Tenacious delivery lead will have the context brief in the invite. If anything changes on your side, reply here and we'll reshuffle.
+Calendar invite will arrive separately from Cal.com. If anything changes,
+reply here and we'll rebook.
 
-— Tenacious
-
-— draft: pending Tenacious delivery-lead approval
+{{ sender.first_name }}
+{{ sender.title }}
+Tenacious Intelligence Corporation
+gettenacious.com

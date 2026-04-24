@@ -1,136 +1,92 @@
-"""Email send — Resend primary, sink fallback.
+"""Email send adapter.
 
-Every send routes through the kill-switch first. When unset, recipient is
-rewritten to `sink_email` and the payload is appended to `data/sink/email.jsonl`.
+Invoked only by agent.kill_switch.deliver() — this is the thin provider edge.
+On missing provider credentials, writes to a local JSONL sink so the agent
+runs end-to-end in offline dev. The kill switch has already asserted the
+recipient allowlist and the draft header before this is called.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
-import pathlib
-import time
-from dataclasses import dataclass
+import uuid
+from pathlib import Path
 from typing import Any
-from uuid import UUID
 
-import httpx
-
-from agent import tracing
-from agent.integrations.killswitch import KillSwitch
-
-_SINK_PATH = pathlib.Path("data/sink/email.jsonl")
+from agent.config import settings
+from agent.kill_switch import EmailPayload
 
 
-@dataclass
-class EmailResult:
-    trace_id: str
-    to_effective: str
-    to_intended: str
-    provider: str
-    provider_msg_id: str | None
-    draft: bool
+def send(to: str, payload: EmailPayload) -> tuple[str, str]:
+    """Send an email. Returns (message_id, provider)."""
+    provider = settings.EMAIL_PROVIDER.lower()
+    if provider == "resend" and settings.RESEND_API_KEY:
+        return _send_resend(to, payload)
+    if provider == "mailersend" and settings.MAILERSEND_API_KEY:
+        return _send_mailersend(to, payload)
+    return _send_local_sink(to, payload)
 
 
-class EmailSender:
-    def __init__(
-        self,
-        *,
-        killswitch: KillSwitch,
-        provider: str = "sink",
-        api_key: str | None = None,
-        from_address: str = "outbound@convergine-sandbox.invalid",
-        from_domain: str = "convergine-sandbox.invalid",
-    ) -> None:
-        self.killswitch = killswitch
-        self.provider = provider if api_key and killswitch.enabled else "sink"
-        self.api_key = api_key
-        self.from_address = from_address
-        self.from_domain = from_domain
+def _send_resend(to: str, payload: EmailPayload) -> tuple[str, str]:
+    import httpx
 
-    def send(
-        self,
-        *,
-        to: str,
-        subject: str,
-        body_markdown: str,
-        trace_id: UUID | str,
-        variant: str = "signal_grounded",
-        segment: int | str | None = None,
-        draft_approved: bool = False,
-    ) -> EmailResult:
-        tid = str(trace_id)
-        effective_to = self.killswitch.route_email(to, tid)
-        is_draft = not (self.killswitch.enabled and draft_approved)
+    body = {
+        "from": settings.RESEND_FROM_ADDRESS,
+        "to": [to],
+        "subject": payload.subject,
+        "text": payload.body_text,
+        "headers": dict(payload.headers),
+    }
+    if payload.body_html:
+        body["html"] = payload.body_html
+    if payload.reply_to:
+        body["reply_to"] = payload.reply_to
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    r = httpx.post("https://api.resend.com/emails", json=body, headers=headers, timeout=30)
+    r.raise_for_status()
+    return r.json().get("id", ""), "resend"
 
-        headers = {
-            "X-Convergine-Trace-Id": tid,
-            "X-Convergine-Draft": "true" if is_draft else "false",
-            "X-Convergine-Variant": variant,
-            "X-Convergine-Segment": str(segment) if segment is not None else "abstain",
-            "List-Unsubscribe": f"<mailto:unsubscribe+{tid}@{self.from_domain}>, <https://{self.from_domain}/unsub/{tid}>",
-        }
-        footer = "\n\n— draft: pending Tenacious delivery-lead approval" if is_draft else ""
-        body = body_markdown + (footer if footer not in body_markdown else "")
 
-        with tracing.span("email.send", provider=self.provider, trace_id=tid, variant=variant):
-            time.sleep(0.08)  # realistic latency (client-side batching jitter)
-            if self.provider == "sink":
-                self._write_sink(effective_to, to, subject, body, headers, is_draft, variant, segment, tid)
-                return EmailResult(
-                    trace_id=tid, to_effective=effective_to, to_intended=to,
-                    provider="sink", provider_msg_id=None, draft=is_draft,
-                )
-            # Live: Resend
-            msg_id = self._send_resend(effective_to, subject, body, headers)
-            return EmailResult(
-                trace_id=tid, to_effective=effective_to, to_intended=to,
-                provider="resend", provider_msg_id=msg_id, draft=is_draft,
-            )
+def _send_mailersend(to: str, payload: EmailPayload) -> tuple[str, str]:
+    import httpx
 
-    # ------------------------------------------------------------------ #
+    body = {
+        "from": {"email": settings.RESEND_FROM_ADDRESS},
+        "to": [{"email": to}],
+        "subject": payload.subject,
+        "text": payload.body_text,
+        "headers": [{"name": k, "value": v} for k, v in payload.headers.items()],
+    }
+    if payload.body_html:
+        body["html"] = payload.body_html
+    headers = {
+        "Authorization": f"Bearer {settings.MAILERSEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    r = httpx.post("https://api.mailersend.com/v1/email", json=body, headers=headers, timeout=30)
+    r.raise_for_status()
+    mid = r.headers.get("x-message-id", "")
+    return mid, "mailersend"
 
-    def _write_sink(
-        self,
-        effective_to: str,
-        intended_to: str,
-        subject: str,
-        body: str,
-        headers: dict[str, str],
-        draft: bool,
-        variant: str,
-        segment: Any,
-        trace_id: str,
-    ) -> None:
-        _SINK_PATH.parent.mkdir(parents=True, exist_ok=True)
-        rec = {
-            "channel": "email",
-            "to_effective": effective_to,
-            "to_intended": intended_to,
-            "from": self.from_address,
-            "subject": subject,
-            "body_markdown": body,
-            "headers": headers,
-            "draft": draft,
-            "variant": variant,
-            "segment": segment,
-            "trace_id": trace_id,
-            "sent_at": tracing._now_iso(),  # type: ignore[attr-defined]
-        }
-        with _SINK_PATH.open("a") as f:
-            f.write(json.dumps(rec) + "\n")
 
-    def _send_resend(self, to: str, subject: str, body: str, headers: dict[str, str]) -> str | None:
-        with httpx.Client(timeout=30) as c:
-            r = c.post(
-                "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "from": self.from_address,
-                    "to": [to],
-                    "subject": subject,
-                    "text": body,
-                    "headers": headers,
-                },
-            )
-            if r.status_code >= 400:
-                raise RuntimeError(f"Resend error {r.status_code}: {r.text}")
-            return r.json().get("id")
+def _send_local_sink(to: str, payload: EmailPayload) -> tuple[str, str]:
+    path = Path(settings.LOCAL_SINK_DIR) / "email.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    message_id = f"local-{uuid.uuid4().hex[:12]}"
+    record: dict[str, Any] = {
+        "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "message_id": message_id,
+        "to": to,
+        "from": settings.RESEND_FROM_ADDRESS,
+        "subject": payload.subject,
+        "body_text": payload.body_text,
+        "headers": dict(payload.headers),
+        "thread_id": payload.thread_id,
+        "trace_id": payload.trace_id,
+    }
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+    return message_id, "local_sink"

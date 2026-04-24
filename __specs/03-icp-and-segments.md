@@ -1,155 +1,97 @@
-# 03 — ICP Definition and Segment Classifier
+# 03 — ICP and Segments
 
-**Source:** Challenge document — "Who Tenacious sells to", "ICP classifier with abstention".
+The canonical ICP lives in [`tenacious_sales_data/seed/icp_definition.md`](../tenacious_sales_data/seed/icp_definition.md). This spec defines how the implementation consumes and enforces that definition. **Segment names are fixed for grading.** Filters may be refined in the classifier with justification in `method/method.md`; segments may not be renamed, merged, split, or extended.
 
-## 1. Four fixed segments
+## The four segments (fixed)
 
-Segment **names** are immutable (grading-fixed). Filters may be refined; the taxonomy may not.
+| Segment | Name | Primary signal | Service line |
+|---|---|---|---|
+| **1** | Recently-funded Series A/B startups | Series A/B in last 180d, $5–30M, HC 15–80, ≥5 open eng roles | Talent outsourcing |
+| **2** | Mid-market platforms restructuring cost | HC 200–2000, layoff in last 120d OR restructure press in last 90d, ≥3 open eng roles post-event | Talent outsourcing |
+| **3** | Engineering-leadership transitions | New CTO or VP Eng in last 90d, HC 50–500, no concurrent CFO/CEO transition | Talent outsourcing (often) |
+| **4** | Specialized capability gaps | Stuck specialist req 60+d OR strategic announcement without team-page change, **AI-maturity ≥2 required** | Project consulting |
 
-```yaml
-# agent/icp/segments.yaml
-segments:
-  - id: 1
-    name: "Recently-funded Series A/B startups"
-    qualifiers:
-      funding_round_in: [Series A, Series B]
-      funding_amount_usd_min: 5_000_000
-      funding_amount_usd_max: 30_000_000
-      funding_recency_days_max: 180
-      headcount_min: 15
-      headcount_max: 80
-    disqualifiers:
-      layoff_recency_days_max: 120    # push to segment 2 instead
-    why_they_buy: "Hiring velocity outstrips in-house recruiting; runway is the clock."
-    pitch_register:
-      ai_maturity_high: "scale your AI team faster than in-house hiring can support"
-      ai_maturity_low: "stand up your first AI function with a dedicated squad"
+## Classification rules (ordered)
 
-  - id: 2
-    name: "Mid-market platforms restructuring cost"
-    qualifiers:
-      headcount_min: 200
-      headcount_max: 2_000
-      layoff_recency_days_max: 120
-      company_stage_in: [late_stage, public]
-    disqualifiers:
-      funding_recency_days_max: 180   # only disqualify if fresh raise dominates narrative
-    why_they_buy: "Replace higher-cost roles with offshore equivalents; quiet signal of operational discipline."
-    pitch_register:
-      ai_maturity_high: "shift cost structure without losing AI delivery velocity"
-      ai_maturity_low: "maintain delivery capacity while reducing burn"
+The classifier applies rules in this order and stops at the first match. Conflict resolution is part of grading — Segment 1/2 confusion on a layoff+funding prospect is a standard probe target.
 
-  - id: 3
-    name: "Engineering-leadership transitions"
-    qualifiers:
-      leadership_change_role_in: [CTO, VP Engineering, SVP Engineering, Head of Engineering]
-      leadership_change_recency_days_max: 90
-    disqualifiers: {}
-    why_they_buy: "New leaders reassess vendor contracts and offshore mix in first 6 months — narrow high-conversion window."
-    pitch_register:
-      default: "As you reassess vendor mix, here is what the top quartile in your sector is doing differently."
+1. **Layoff in last 120 days AND fresh funding in last 180 days** → **Segment 2** (cost pressure dominates).
+2. **New CTO / VP Eng in last 90 days** → **Segment 3** (transition window dominates).
+3. **Specialized-capability signal AND AI-maturity ≥ 2** → **Segment 4**.
+4. **Fresh funding in last 180 days (no layoff, no leadership change)** → **Segment 1**.
+5. **Otherwise → abstain**. The agent sends a generic exploratory email rather than a segment-specific pitch.
 
-  - id: 4
-    name: "Specialized capability gaps"
-    qualifiers:
-      build_signal_in: [ml_platform_migration, agentic_systems, data_contracts, rag_infra, llm_evals]
-      ai_maturity_min: 2              # HARD GATE — do not pitch segment 4 below this
-    disqualifiers:
-      ai_maturity_max_exclusive: 2    # belt + braces
-    why_they_buy: "Project-based consulting, higher margin, shorter commitment."
-    pitch_register:
-      default: "Your public work on {{ build_signal }} suggests a specific infrastructure gap we have delivered on three times."
+## Qualifying and disqualifying filters
+
+The qualifying and disqualifying filters per segment are the canonical ones in `icp_definition.md`. Implementation notes:
+
+- Qualifying filters are **positive evidence** that must be present for the segment to fire. Missing one filter drops `segment_confidence` proportionally to its weight.
+- Disqualifying filters are **hard negatives**. Any single disqualifying filter fires → segment is ruled out regardless of positive evidence.
+- "Already listed as client of a direct Tenacious competitor" disqualifier (Segment 1): check Andela / Turing / Revelo / TopTal public case studies. Implementation: a static YAML list of competitor case-study URLs, scraped once per week (≤ 4 domains → within the 200-company cap).
+- "Explicitly anti-offshore founder public stance" (Segment 1): a soft signal that requires a text-classifier LLM call over the founder's recent public posts. If the post-corpus is empty or ambiguous, this filter does **not** fire.
+- "Layoff percentage above 40% in a single event" (Segment 2 disqualifier): parsed from layoffs.fyi `percentage_cut` field.
+- "Interim / acting CTO appointment" (Segment 3 disqualifier): string match against announcement text (`interim`, `acting`, `interim CTO`, `acting VP Engineering`).
+
+## Confidence scoring
+
+`segment_confidence ∈ [0, 1]`:
+
+```
+qualifying_evidence   = Σ weight_i × I(filter_i fires)   for qualifying filters in segment
+qualifying_maximum    = Σ weight_i                        over the same set
+segment_confidence    = qualifying_evidence / qualifying_maximum
+                        × (1 − penalty_for_missing_hard_filters)
 ```
 
-## 2. Classifier with abstention
+Weights and thresholds live in [`config.example.yaml`](config.example.yaml) under `icp.segment_<n>.filter_weights`. **Default confidence abstention threshold is 0.6** (configurable via `icp.abstain_threshold`). Below threshold, `primary_segment_match = "abstain"`.
 
-**Motivation:** A mis-segmented first email damages the brand more than a generic-exploratory email. Low classifier confidence triggers the generic variant.
+## Abstention is a first-class outcome
 
-### Inputs
-- `hiring_signal_brief.json` (see [05](05-signal-enrichment-pipeline.md))
-- `ai_maturity_score.json`
-- ICP `segments.yaml`
+Abstention is **not** a failure path. It is the correct behavior when signal is weak, and the probe library (spec 12) measures abstention correctness. An abstained prospect:
 
-### Algorithm
+- Is still eligible for a generic exploratory email (one touch) — but only if firmographics pass baseline sanity (is a real company on Crunchbase, in a supported geography, not on the competitor-client list).
+- Is flagged in the HubSpot contact property `tenacious_segment = abstain` and `tenacious_status = draft`.
+- Contributes to the abstention-rate metric tracked in [spec 10](10-observability.md).
 
-```python
-def classify(brief: HiringSignalBrief) -> IcpClassification:
-    scores = {s.id: score_segment(brief, s) for s in SEGMENTS}
-    top = max(scores, key=scores.get)
-    second = sorted(scores.values(), reverse=True)[1]
-    margin = scores[top] - second
+## Pitch language shifts
 
-    if scores[top] < cfg.icp.confidence_threshold:        # default 0.55
-        return IcpClassification(segment=None, mode="abstain",
-                                 reason="top score below threshold")
-    if margin < cfg.icp.margin_threshold:                  # default 0.10
-        return IcpClassification(segment=None, mode="abstain",
-                                 reason=f"ambiguous between {top} and {second}")
-    if top == 4 and brief.ai_maturity.score < 2:
-        return IcpClassification(segment=None, mode="abstain",
-                                 reason="segment 4 gated below maturity 2")
-    return IcpClassification(segment=top, mode="confident",
-                             confidence=scores[top], margin=margin)
+Per segment, the composer selects language based on the AI-maturity score:
+
+| Segment | High AI-readiness (2–3) | Low AI-readiness (0–1) |
+|---|---|---|
+| **1** | "scale your AI team faster than in-house hiring can support" | "stand up your first AI function with a dedicated squad" |
+| **2** | "preserve your AI delivery capacity while reshaping cost structure" | "maintain platform delivery velocity through the restructure" |
+| **3** | AI-maturity **does not shift** pitch. Lead with the appointment, let the new leader direct technical language. | (same) |
+| **4** | Only pitched at score ≥2. Pitch grounded in the specific capability gap from `competitor_gap_brief.json`. | **Not pitched.** Compose as Segment 1 or 2 with softer AI vocabulary. |
+
+Implementation: the composer receives `(segment, ai_maturity_score, ai_maturity_confidence)` and loads the corresponding prompt from `agent/prompts/composer_segment_<n>.txt`. Low-confidence + high-score combinations force "ask rather than assert" phrasing — the agent softens verbs (*we noticed* → *is this something you're actively scoping?*).
+
+## Segment 4 — AI-maturity gating
+
+A score-0 or score-1 prospect **must not** receive a Segment 4 pitch. The composer checks:
+
+```
+if segment == 4 and ai_maturity.score < 2:
+    raise SegmentMismatch("Segment 4 requires AI maturity ≥2")
 ```
 
-### Scoring function
-Weighted sum over segment qualifiers, each scored in [0, 1]:
+This is enforced at composer input, not at post-hoc tone check — reaching out to a score-0 prospect with a Segment 4 pitch wastes the contact and damages the brand (per `icp_definition.md`).
 
-| Signal → Segment | Weight |
-|------------------|--------|
-| Funding recency × size → 1 | 0.45 |
-| Layoff recency + headcount band → 2 | 0.40 |
-| Leadership change recency → 3 | 0.60 |
-| Build-signal presence + maturity ≥ 2 → 4 | 0.55 |
+## Per-segment sequence adjustments
 
-Plus **penalty terms** per segment disqualifier (e.g., a layoff in last 120 days penalises segment 1 by 0.30).
+Email-sequence behavior is in [spec 07](07-channels.md) and the templates. Per-segment deviations:
 
-### Outputs
-```json
-{
-  "segment": 2,
-  "mode": "confident",
-  "confidence": 0.78,
-  "margin": 0.31,
-  "scores": {"1": 0.12, "2": 0.78, "3": 0.47, "4": 0.05},
-  "rationale": [
-    "layoff on 2026-03-14 (38 days ago) — +0.40 to segment 2",
-    "headcount 640 within 200–2000 band — +0.15",
-    "no Series A/B round in last 180 days — penalty 0.00 to segment 1"
-  ]
-}
-```
+- **Segment 2**: soften urgency in Email 1. Post-restructure CFOs are wary of high-energy outbound.
+- **Segment 4**: Email 2 competitor-gap content is the core value proposition and **must** have at least one `high` confidence gap finding in `competitor_gap_brief.json` or the follow-up is suppressed.
+- **Low AI-readiness prospects in any segment**: default to Segment 1 or 2 framing with softer AI-adjacent vocabulary; never use Segment 4 pitch language.
 
-## 3. Behaviour under abstention
+## Bench-to-brief match
 
-When `mode == "abstain"`:
+Every segment's pitch is gated on `bench_summary.json`. The composer's draft may reference specific stacks only when the stack has at least one available engineer on the bench. See [spec 05](05-signal-enrichment-pipeline.md) for the bench-gate implementation and [spec 12](12-probe-library.md) for the bench-over-commitment probe.
 
-1. Agent sends a **generic-exploratory** email variant (shorter, no segment-specific pitch, no competitor gap claim).
-2. Trace is tagged `outbound_variant=exploratory` so the memo can measure the reply-rate delta vs. `outbound_variant=signal_grounded`.
-3. HubSpot contact record stores `icp_segment=null, icp_mode=abstain`.
-4. Thread can be re-classified after the prospect replies — new signals from the reply may lift confidence above threshold.
+## What the implementation must NOT do
 
-## 4. Corner cases the classifier must get right
-
-| Case | Expected behaviour | Probe reference |
-|------|-------------------|-----------------|
-| Post-layoff company that also raised a recent bridge round | Segment 2, **not** 1; layoff dominates pitch register | `icp_misclass_layoff_plus_bridge.yaml` |
-| New CTO at a freshly funded startup | Segments 1 and 3 both qualify; prefer 3 (higher conversion) | `icp_misclass_segments_overlap.yaml` |
-| 1500-person co with ML-platform RFP but no layoff | Segment 4 if maturity ≥ 2, else abstain | `icp_misclass_segment4_gate.yaml` |
-| Private company, no public funding signal, no layoffs, ≤ 50 people | Abstain (insufficient evidence) | `icp_misclass_insufficient.yaml` |
-
-## 5. Adapting filters (allowed, bounded)
-
-The agent **may** adjust:
-- Numeric thresholds (headcount bands, recency windows) based on sector distribution from the Crunchbase ODM sample.
-- Weight vector via held-out calibration.
-
-The agent **must not**:
-- Invent a fifth segment.
-- Rename any segment.
-- Drop the AI-maturity gate on segment 4.
-- Re-purpose `segment_id` integers.
-
-## 6. Output contract
-
-Every prospect must produce an `icp_classification.json` with the shape above, stored in `data/briefs_cache/<crunchbase_id>/icp_classification.json` and attached to the HubSpot contact as a custom property.
+- Rename, merge, split, or add segments.
+- Silently re-classify a Segment 2 prospect as Segment 1 because the funding signal is more attractive to pitch (layoff overrides funding — see rule #1 above).
+- Use a Segment 4 pitch on a score-0 prospect.
+- Hard-code segment thresholds in Python source (all thresholds are in YAML config).
