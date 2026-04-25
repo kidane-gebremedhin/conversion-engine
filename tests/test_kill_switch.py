@@ -12,7 +12,7 @@ import pytest
 
 from agent.kill_switch import (
     PolicyViolation, EmailPayload, SmsPayload, VoicePayload,
-    deliver, add_draft_header,
+    deliver, add_draft_header, gate_booking,
 )
 from agent.config import settings
 
@@ -64,3 +64,26 @@ def test_sms_over_length_is_rejected(monkeypatch):
     long = "x" * 200
     with pytest.raises(PolicyViolation):
         deliver("sms", settings.SMS_SINK_NUMBER, SmsPayload(body=long))
+
+
+def test_gate_booking_returns_sink_when_kill_switch_unset():
+    assert not settings.TENACIOUS_OUTBOUND_ENABLED
+    # Kill switch unset → "sink" regardless of recipient (even unknown ones).
+    assert gate_booking("anyone@example.com") == "sink"
+
+
+def test_gate_booking_returns_live_for_synthetic_recipient(monkeypatch):
+    monkeypatch.setattr(settings, "TENACIOUS_OUTBOUND_ENABLED", True)
+    # First entry in data/synthetic_prospects.json
+    assert gate_booking("elena.romero@delamode-group.com") == "live"
+
+
+def test_gate_booking_returns_live_for_sink_address(monkeypatch):
+    monkeypatch.setattr(settings, "TENACIOUS_OUTBOUND_ENABLED", True)
+    assert gate_booking(settings.EMAIL_SINK_ADDRESS) == "live"
+
+
+def test_gate_booking_raises_for_unknown_recipient(monkeypatch):
+    monkeypatch.setattr(settings, "TENACIOUS_OUTBOUND_ENABLED", True)
+    with pytest.raises(PolicyViolation):
+        gate_booking("real-customer@real-company.com")

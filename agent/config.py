@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     DEV_LLM_MODEL: str = "qwen/qwen3-next-80b-a3b"
+    # Comma-separated OpenRouter slugs, tried in order if the primary fails
+    # (rate limit / 5xx / timeout). Single API call — OpenRouter handles the
+    # fallback transparently.
+    DEV_LLM_FALLBACK_MODELS: str = ""
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_BASE_URL: str = "https://api.anthropic.com"
     OPENAI_API_KEY: str = ""

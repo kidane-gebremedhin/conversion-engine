@@ -4,13 +4,16 @@ Segment 1 prospect (recently-funded Series A/B startup, 15–80 headcount,
 
 {{STYLE_MARKERS}}
 
-SEGMENT 1 PITCH ANCHORS:
-- High AI-readiness (score 2–3): "scale your AI team faster than in-house
-  hiring can support".
-- Low AI-readiness (score 0–1): "stand up your first AI function with a
-  dedicated squad".
+SEGMENT 1 PITCH ANCHORS (frame as observation + hypothesis, never as a claim
+about the prospect's stated needs):
+- High AI-readiness (your internal score 2–3): observe the hiring velocity,
+  hypothesize that scaling an AI function faster than in-house hiring can
+  support may matter — invite the prospect to confirm.
+- Low AI-readiness (your internal score 0–1): observe the hiring velocity +
+  the absence of AI-adjacent roles, hypothesize that standing up a first AI
+  function may be on the horizon — invite the prospect to confirm.
 
-CONTEXT:
+CONTEXT (for your reasoning only — do NOT quote raw scores or labels in the email):
 - Prospect: {{PROSPECT_NAME}} ({{PROSPECT_TITLE}} at {{PROSPECT_COMPANY}}).
 - Hiring signal: {{OPEN_ROLES_TODAY}} open engineering roles today
   vs {{OPEN_ROLES_60D_AGO}} sixty days ago — velocity {{VELOCITY_LABEL}}.
@@ -19,6 +22,34 @@ CONTEXT:
 - AI maturity: {{AI_SCORE}}/3 (confidence {{AI_CONFIDENCE}}).
 - Available stacks on the Tenacious bench: {{BENCH_STACKS}}.
 - Cal.com discovery-call link: {{CAL_LINK}}.
+
+HARD STYLE RULES (violations WILL fail the tone gate — follow exactly):
+1. NEVER expose internal scoring numbers to the prospect. Don't write
+   "AI maturity 1/3", "your readiness score is X", "AI-readiness score is
+   low", or any "<n>/<m>" grade. Instead translate the score into a
+   qualitative observation referencing specific public data.
+   BAD: "Your AI-readiness score is low (1/3)."
+   GOOD: "We noticed 3 of your 11 open roles are data- or ML-adjacent."
+2. NEVER state the prospect's needs as facts. Frame EVERY conclusion as a
+   hypothesis the prospect can confirm or correct.
+   BAD: "this suggests a need to stand up your first AI function."
+   BAD: "Given your Series B funding, you need to scale engineering."
+   GOOD: "one read of this hiring pace is that delivery capacity may be
+   the bottleneck — happy to be wrong."
+   GOOD: "if scaling the data team faster than in-house hiring allows is
+   on the table, we might be useful."
+3. Anchor EVERY claim in specific, observable public signals (exact job-post
+   counts, funding round name, specific role titles you saw). Never use
+   vague framing like "researching engineering functions in your sector"
+   which sounds generic and dishonest.
+   BAD: "I'm researching engineering functions in your sector."
+   GOOD: "We noticed {{PROSPECT_COMPANY}} went from {{OPEN_ROLES_60D_AGO}}
+   to {{OPEN_ROLES_TODAY}} open engineering roles since your Series B."
+4. State your purpose transparently. You are reaching out to explore
+   whether Tenacious's bench capacity is relevant. Say so directly.
+   BAD: "I have no specific signal on your current needs."
+   GOOD: "We run monthly-priced engineering squads and are exploring
+   whether our bench ({{BENCH_STACKS}}) fits your current build."
 
 TASK:
 Compose ONE email as JSON with this exact shape. No prose outside JSON.
@@ -31,3 +62,4 @@ Compose ONE email as JSON with this exact shape. No prose outside JSON.
 
 Every numeric or named claim in body_text must appear in "briefs_referenced"
 as a dotted path into the hiring signal brief (e.g., "hiring_velocity.open_roles_today").
+

@@ -1,58 +1,123 @@
-"""Day-0 Cal.com proof: end-to-end test booking against the self-hosted instance.
+"""Day-0 Cal.com proof: webhook-only readiness (no API access required).
 
-Steps:
-  1. Ensure the `discovery-15` event type exists (idempotent).
-  2. List available slots for the next 7 days.
-  3. Create one booking for a synthetic prospect at the first slot.
-  4. Read the booking back by id; print the confirmation.
+Self-hosted Cal.com gates API keys behind a commercial license, so this
+project's Cal.com integration is webhook-only:
+  - Outbound: emails embed a public booking link (cal_link).
+  - Inbound:  Cal.com posts BOOKING_CREATED to /webhook/cal.
 
-When CALCOM_API_KEY is unset, the script runs against the local-file
-fallback in agent/calendar/client.py so the Day-0 loop works offline.
-Flip to the real server by bringing up `docker compose -f infra/docker-compose.yml up`
-and setting CALCOM_API_KEY + CALCOM_USERNAME.
+This script verifies that surface:
+  1. CALCOM_USERNAME is set (else the booking link in emails resolves nowhere).
+  2. CALCOM_BASE_URL is reachable.
+  3. Both event-type booking pages (discovery-15, discovery-30) resolve —
+     i.e., they were created in the UI and are publicly bookable.
+  4. CALCOM_WEBHOOK_URL + CALCOM_WEBHOOK_SECRET are configured.
+
+It does NOT programmatically create a booking — that requires the
+commercial API. To prove the webhook actually fires, the script prints a
+short manual confirmation step at the end.
 """
 from __future__ import annotations
 
-import datetime as dt
 import sys
 
-from agent.calendar.client import CalComClient
+import httpx
+
 from agent.config import settings
 
 
-def main() -> int:
-    client = CalComClient()
-    slug = settings.CALCOM_EVENT_TYPE_DISCOVERY_15
-    duration = settings.CALCOM_DEFAULT_DURATION_MINUTES
+def _check_reachable(base: str) -> bool:
+    try:
+        r = httpx.get(base, timeout=10, follow_redirects=True)
+    except httpx.HTTPError as e:
+        print(
+            f"ERROR: Cal.com unreachable at {base}: {e}. "
+            "Is `docker compose -f infra/docker-compose.yml up` running?",
+            file=sys.stderr,
+        )
+        return False
+    if r.status_code >= 500:
+        print(
+            f"ERROR: Cal.com at {base} returned HTTP {r.status_code}.",
+            file=sys.stderr,
+        )
+        return False
+    print(f"→ Cal.com reachable at {base} (HTTP {r.status_code})")
+    return True
 
-    event_type_id = client.ensure_event_type(slug, duration)
-    print(f"→ event type {slug!r} id={event_type_id} ({client.mode})")
 
-    today = dt.date.today()
-    slots = client.free_slots(slug, tz="America/New_York", start=today, end=today + dt.timedelta(days=7))
-    if not slots:
-        print("! no free slots; aborting", file=sys.stderr)
-        return 2
-    first = slots[0]
-    start_iso = first.get("start_local") or first.get("time") or first.get("start")
-    print(f"→ first slot: {start_iso}")
-
-    booking = client.create_booking(
-        slug,
-        prospect_email="daytest@trp1-sink.example",
-        start_iso=start_iso,
-        duration_minutes=duration,
-        prospect_name="Day0 Test",
-        prospect_timezone="America/New_York",
+def _check_event_type_page(base: str, username: str, slug: str) -> bool:
+    url = f"{base}/{username}/{slug}"
+    try:
+        r = httpx.get(url, timeout=10, follow_redirects=True)
+    except httpx.HTTPError as e:
+        print(f"ERROR: cannot fetch {url}: {e}", file=sys.stderr)
+        return False
+    if r.status_code == 200:
+        print(f"✓ booking page resolves: {url}")
+        return True
+    print(
+        f"ERROR: booking page {url} returned HTTP {r.status_code}. "
+        f"Create the {slug!r} event type at {base}/event-types and try again.",
+        file=sys.stderr,
     )
-    bid = booking.get("booking_id") or booking.get("uid") or ""
-    print(f"✓ booked: id={bid}")
+    return False
 
-    confirmed = client.booking(bid)
-    if not confirmed:
-        print("! could not read booking back", file=sys.stderr)
+
+def main() -> int:
+    failures: list[str] = []
+
+    if not settings.CALCOM_USERNAME:
+        failures.append(
+            "CALCOM_USERNAME is unset. The booking link in outbound emails "
+            "would resolve to a non-existent profile."
+        )
+
+    base = settings.CALCOM_BASE_URL.rstrip("/")
+    if not _check_reachable(base):
+        return 2
+
+    if settings.CALCOM_USERNAME:
+        for slug in (
+            settings.CALCOM_EVENT_TYPE_DISCOVERY_15,
+            settings.CALCOM_EVENT_TYPE_DISCOVERY_30,
+        ):
+            if not _check_event_type_page(base, settings.CALCOM_USERNAME, slug):
+                failures.append(f"event type {slug!r} not bookable")
+
+    if not settings.CALCOM_WEBHOOK_URL:
+        failures.append(
+            "CALCOM_WEBHOOK_URL is unset. Register a public URL with Cal.com "
+            "(Settings → Developer → Webhooks → BOOKING_CREATED) and paste "
+            "it in .env."
+        )
+    else:
+        print(f"→ webhook URL configured: {settings.CALCOM_WEBHOOK_URL}")
+
+    if not settings.CALCOM_WEBHOOK_SECRET:
+        failures.append(
+            "CALCOM_WEBHOOK_SECRET is unset. Cal.com signs webhooks; without "
+            "the shared secret /webhook/cal will reject every payload."
+        )
+
+    if failures:
+        print("", file=sys.stderr)
+        for msg in failures:
+            print(f"ERROR: {msg}", file=sys.stderr)
         return 3
-    print(f"✓ confirmed readback: start_time_utc={confirmed.get('start_time_utc')}")
+
+    print(
+        "\nManual confirmation (the webhook fire cannot be verified "
+        "programmatically without API access):"
+    )
+    booking_url = (
+        f"{base}/{settings.CALCOM_USERNAME}/{settings.CALCOM_EVENT_TYPE_DISCOVERY_15}"
+    )
+    print(f"  1. Open {booking_url}")
+    print("  2. Book any slot using a sandbox email.")
+    print(
+        "  3. Confirm 'POST /webhook/cal HTTP/1.1 200 OK' shows in the "
+        "FastAPI log."
+    )
     return 0
 
 

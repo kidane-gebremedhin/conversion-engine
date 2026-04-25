@@ -18,9 +18,10 @@ class CalComClient:
         self.api_key = settings.CALCOM_API_KEY
         self.base_url = settings.CALCOM_BASE_URL.rstrip("/")
         self.mode = "rest" if self.api_key else "local"
-        if self.mode == "local":
-            self._local_dir = Path("data/calcom_local")
-            self._local_dir.mkdir(parents=True, exist_ok=True)
+        # Local sink directory always exists — even when self.mode == "rest",
+        # the kill-switch gate may force a booking through the local-file mock.
+        self._local_dir = Path("data/calcom_local")
+        self._local_dir.mkdir(parents=True, exist_ok=True)
 
     def healthcheck(self) -> bool:
         if self.mode == "local":
@@ -78,24 +79,39 @@ class CalComClient:
         )
         return r.json().get("slots", [])
 
+    def _create_booking_local(self, slug: str, *, prospect_email: str, start_iso: str, duration_minutes: int, prospect_name: str, prospect_timezone: str) -> dict[str, Any]:
+        b = {
+            "booking_id": f"bk-{uuid.uuid4().hex[:12]}",
+            "slug": slug,
+            "prospect_email": prospect_email,
+            "prospect_name": prospect_name,
+            "prospect_timezone": prospect_timezone,
+            "start_time_utc": start_iso,
+            "end_time_utc": (dt.datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+                             + dt.timedelta(minutes=duration_minutes)).isoformat(),
+            "lead_email": settings.CALCOM_DEFAULT_DELIVERY_LEAD,
+            "created_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        }
+        path = self._local_dir / "bookings.jsonl"
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(b) + "\n")
+        return b
+
     def create_booking(self, slug: str, *, prospect_email: str, start_iso: str, duration_minutes: int, prospect_name: str, prospect_timezone: str) -> dict[str, Any]:
-        if self.mode == "local":
-            b = {
-                "booking_id": f"bk-{uuid.uuid4().hex[:12]}",
-                "slug": slug,
-                "prospect_email": prospect_email,
-                "prospect_name": prospect_name,
-                "prospect_timezone": prospect_timezone,
-                "start_time_utc": start_iso,
-                "end_time_utc": (dt.datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
-                                 + dt.timedelta(minutes=duration_minutes)).isoformat(),
-                "lead_email": settings.CALCOM_DEFAULT_DELIVERY_LEAD,
-                "created_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
-            path = self._local_dir / "bookings.jsonl"
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(b) + "\n")
-            return b
+        # Kill-switch gate: when TENACIOUS_OUTBOUND_ENABLED is unset, force the
+        # local-file mock regardless of self.mode, so a real prospect's calendar
+        # cannot receive an invite during the challenge week. See spec 16 Rule 5.
+        from agent.kill_switch import gate_booking
+        decision = gate_booking(prospect_email)
+        if decision == "sink" or self.mode == "local":
+            return self._create_booking_local(
+                slug,
+                prospect_email=prospect_email,
+                start_iso=start_iso,
+                duration_minutes=duration_minutes,
+                prospect_name=prospect_name,
+                prospect_timezone=prospect_timezone,
+            )
         import httpx
         r = httpx.post(
             f"{self.base_url}/api/v1/bookings",

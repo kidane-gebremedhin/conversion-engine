@@ -8,6 +8,16 @@ The calendar layer exists so the agent can end an engaged conversation with a bo
 - **Rationale**: no credit card, no admin-API gate, and a local Cal.com instance is indistinguishable from a managed one for the challenge-week scope.
 - **Calendar fixtures**: program-provided mock calendars in `infra/cal_fixtures/` (downloaded after policy acknowledgement is signed). Booking against a real calendar during the challenge week is a policy violation.
 
+## Kill-switch interaction
+
+Booking is one of the four outbound channels gated by `TENACIOUS_OUTBOUND_ENABLED` (see [spec 16 Rule 5](16-data-handling-and-kill-switch.md)). The agent's `agent/calendar/client.py:create_booking()` consults `gate_booking()` before any write:
+
+- **Flag unset** → the booking is forced to the local-file mock at `data/calcom_local/bookings.jsonl`. The real Cal.com API is **not** called, regardless of whether `CALCOM_API_KEY` is configured.
+- **Flag set + recipient is a synthetic prospect or the staff sink** → the real API is called.
+- **Flag set + recipient is anything else** → `PolicyViolation` is raised; the process halts.
+
+In practice, the challenge runs in webhook-only mode (the prospect self-books through the public Cal link the agent emailed). Real bookings only exist when (a) a real human consciously books and (b) the email containing that link wasn't sink-routed — i.e., when the kill switch is intentionally enabled.
+
 ## Configuration (env)
 
 | Env var | Purpose |

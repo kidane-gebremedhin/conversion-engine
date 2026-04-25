@@ -21,6 +21,26 @@ def _c() -> HubSpotClient:
     return _client
 
 
+def _to_hubspot_datetime(value: Any) -> int:
+    """Coerce a datetime / ISO-8601 string / epoch number into HubSpot's
+    epoch-milliseconds long. HubSpot's `datetime` property type rejects
+    ISO strings with INVALID_LONG; only milliseconds-since-epoch is valid.
+    """
+    if isinstance(value, (int, float)):
+        return int(value if value > 1e12 else value * 1000)
+    if isinstance(value, dt.datetime):
+        ts = value if value.tzinfo else value.replace(tzinfo=dt.timezone.utc)
+        return int(ts.timestamp() * 1000)
+    if isinstance(value, str) and value:
+        try:
+            parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+            ts = parsed if parsed.tzinfo else parsed.replace(tzinfo=dt.timezone.utc)
+            return int(ts.timestamp() * 1000)
+        except ValueError:
+            pass
+    return int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000)
+
+
 def upsert_contact(prospect: dict[str, Any], *, brief: Any, classification: Any, trace_id: str, kill_switch_sink: bool) -> str:
     b = brief.model_dump() if hasattr(brief, "model_dump") else brief
     properties: dict[str, Any] = {
@@ -34,7 +54,7 @@ def upsert_contact(prospect: dict[str, Any], *, brief: Any, classification: Any,
         "tenacious_ai_maturity_score": str(b.get("ai_maturity", {}).get("score", 0)),
         "tenacious_ai_maturity_confidence": _conf_bucket(b.get("ai_maturity", {}).get("confidence", 0.0)),
         "tenacious_outreach_status": "never_contacted",
-        "tenacious_last_brief_generated_at": str(b.get("generated_at", dt.datetime.now(dt.timezone.utc).isoformat())),
+        "tenacious_last_brief_generated_at": _to_hubspot_datetime(b.get("generated_at")),
         "tenacious_hiring_signal_brief_url": f"eval/briefs/{prospect['company_domain']}/hiring_signal_brief.json",
         "tenacious_enrichment_sources_checked": json.dumps([
             {"source": s["source"] if isinstance(s, dict) else s.source, "status": str(s.get("status") if isinstance(s, dict) else s.status)}
@@ -58,7 +78,7 @@ def _conf_bucket(f: float) -> str:
 
 def attach_brief(contact_id: str, *, brief_type: str, brief_json: dict[str, Any], brief_url: str) -> str:
     body = {
-        "hs_timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "hs_timestamp": _to_hubspot_datetime(dt.datetime.now(dt.timezone.utc)),
         "hs_note_body": f"Brief attached: {brief_type}\nURL: {brief_url}\n\n" + json.dumps(brief_json, indent=2, default=str)[:5000],
     }
     return _c().create_engagement("note", body, associations=[{"to_id": contact_id, "type": "contact_to_note"}])
@@ -66,7 +86,7 @@ def attach_brief(contact_id: str, *, brief_type: str, brief_json: dict[str, Any]
 
 def record_outbound(contact_id: str, draft: dict[str, Any], *, provider_message_id: str, trace_id: str, tone_scores: dict[str, int] | None = None) -> str:
     body = {
-        "hs_timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "hs_timestamp": _to_hubspot_datetime(dt.datetime.now(dt.timezone.utc)),
         "hs_email_subject": draft.get("subject", ""),
         "hs_email_text": draft.get("body_text", ""),
         "hs_email_direction": "EMAIL",
@@ -81,7 +101,7 @@ def record_outbound(contact_id: str, draft: dict[str, Any], *, provider_message_
 
 def record_inbound(contact_id: str, reply: dict[str, Any], *, classification: Any, trace_id: str) -> str:
     body = {
-        "hs_timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "hs_timestamp": _to_hubspot_datetime(dt.datetime.now(dt.timezone.utc)),
         "hs_email_subject": reply.get("subject", ""),
         "hs_email_text": reply.get("body_text", ""),
         "hs_email_direction": "INCOMING_EMAIL",
@@ -96,7 +116,7 @@ def record_inbound(contact_id: str, reply: dict[str, Any], *, classification: An
 
 def create_handoff_task(contact_id: str, *, reason: str, delivery_lead_email: str, context_brief_md: str, trace_id: str) -> str:
     body = {
-        "hs_timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "hs_timestamp": _to_hubspot_datetime(dt.datetime.now(dt.timezone.utc)),
         "hs_task_subject": f"HANDOFF — {reason}",
         "hs_task_body": context_brief_md[:5000],
         "hs_task_status": "NOT_STARTED",
@@ -109,19 +129,21 @@ def create_handoff_task(contact_id: str, *, reason: str, delivery_lead_email: st
 
 
 def record_booking(contact_id: str, cal_booking: dict[str, Any], *, segment_at_booking: str, context_brief_url: str, evidence_graph_id: str) -> tuple[str, str]:
+    start_ms = _to_hubspot_datetime(cal_booking.get("start_time_utc") or dt.datetime.now(dt.timezone.utc))
+    end_ms = _to_hubspot_datetime(cal_booking.get("end_time_utc") or dt.datetime.now(dt.timezone.utc))
     # Meeting engagement
     meeting = {
-        "hs_timestamp": cal_booking.get("start_time_utc", dt.datetime.now(dt.timezone.utc).isoformat()),
+        "hs_timestamp": start_ms,
         "hs_meeting_title": cal_booking.get("title", "Discovery call"),
-        "hs_meeting_start_time": cal_booking.get("start_time_utc"),
-        "hs_meeting_end_time": cal_booking.get("end_time_utc"),
+        "hs_meeting_start_time": start_ms,
+        "hs_meeting_end_time": end_ms,
         "tenacious_cal_booking_id": cal_booking.get("booking_id", ""),
     }
     meeting_id = _c().create_engagement("meeting", meeting, associations=[{"to_id": contact_id, "type": "contact_to_meeting"}])
     # Deal
     deal = _c().create_deal({
         "dealname": f"Discovery — {cal_booking.get('prospect_company','?')}",
-        "tenacious_discovery_call_scheduled_at": cal_booking.get("start_time_utc"),
+        "tenacious_discovery_call_scheduled_at": start_ms,
         "tenacious_discovery_call_timezone_prospect": cal_booking.get("prospect_timezone", ""),
         "tenacious_delivery_lead_email": cal_booking.get("lead_email", ""),
         "tenacious_context_brief_url": context_brief_url,

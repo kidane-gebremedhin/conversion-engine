@@ -30,6 +30,13 @@ os.environ["TAU2_SEALED_ACCESS"] = "false"
 os.environ["HUBSPOT_USE_MCP"] = "false"
 os.environ["LLM_STUB"] = "1"
 
+# Sink defaults for tests — independent of whatever the user has in .env.
+# The kill switch refuses to dispatch to an empty recipient (PolicyViolation),
+# so these must be non-empty for `deliver()` smoke tests.
+os.environ["EMAIL_SINK_ADDRESS"] = "sink@staff.example.com"
+os.environ["SMS_SINK_NUMBER"] = "+10000000000"
+os.environ["VOICE_SINK_NUMBER"] = "+10000000000"
+
 # Point pydantic-settings away from the user's .env so populated secrets
 # in the dev environment don't bleed into tests via its env_file load.
 os.environ["PYDANTIC_SETTINGS_ENV_FILE"] = "/dev/null"

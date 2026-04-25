@@ -40,6 +40,7 @@ import atexit
 import datetime as dt
 import json
 import os
+import re
 from typing import Any
 
 from agent.config import settings
@@ -175,14 +176,16 @@ class HubSpotMcp:
                 return self._owner_id
             except ValueError:
                 pass
-        info = self.call("hubspot-get-user-details", {}) or {}
-        # The exact key varies by release; try a few.
-        candidate = (
-            info.get("user_id") or info.get("userId") or info.get("ownerId")
-            or info.get("owner_id") or info.get("user", {}).get("id")
-        )
+        info = self.call("hubspot-get-user-details", {})
+        candidate = _extract_owner_id(info)
         if candidate is None:
-            raise HubSpotMcpError("Could not determine HubSpot owner id from get-user-details.")
+            raise HubSpotMcpError(
+                "Could not determine HubSpot owner id from get-user-details "
+                f"(received {type(info).__name__}: {str(info)[:200]!r}). "
+                "Set HUBSPOT_OWNER_ID_DEFAULT in .env to bypass auto-detection — "
+                "find the id at HubSpot → Settings → Users & Teams → click your "
+                "user → the URL contains the id."
+            )
         self._owner_id = int(candidate)
         return self._owner_id
 
@@ -315,6 +318,34 @@ class HubSpotMcp:
 # ────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ────────────────────────────────────────────────────────────────────────────
+
+
+def _extract_owner_id(info: Any) -> str | int | None:
+    """Pull a HubSpot owner / user id out of whatever shape MCP returned.
+
+    `hubspot-get-user-details` returns a dict on some releases and a plain
+    text string on others (sometimes JSON-encoded inside that string,
+    sometimes a free-form `"User: 12345 ..."` blurb). Handle all three.
+    """
+    if isinstance(info, dict):
+        return (
+            info.get("user_id") or info.get("userId") or info.get("ownerId")
+            or info.get("owner_id") or (info.get("user") or {}).get("id")
+        )
+    if isinstance(info, str) and info:
+        try:
+            parsed = json.loads(info)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, dict):
+            cand = _extract_owner_id(parsed)
+            if cand is not None:
+                return cand
+        # Last resort: pull the first plausibly id-shaped integer (6-12 digits).
+        m = re.search(r"\b(\d{6,12})\b", info)
+        if m:
+            return m.group(1)
+    return None
 
 
 def _looks_like_hubspot_api_error(text: str) -> bool:

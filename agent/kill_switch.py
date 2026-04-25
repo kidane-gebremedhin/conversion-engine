@@ -1,9 +1,17 @@
 """Kill switch — the single outbound gate.
 
-Every message the agent sends (email, SMS, voice) passes through deliver().
-This is the one load-bearing policy boundary in the repo:
+Every outbound action the agent takes — email, SMS, voice, and programmatic
+booking-creation — is gated here:
 
-  - TENACIOUS_OUTBOUND_ENABLED unset → recipient rewritten to staff sink.
+  - Message-shaped outbound (email/SMS/voice) flows through `deliver()`.
+  - Booking-shaped outbound (Cal.com event creation) flows through
+    `gate_booking()`, which the calendar client consults before any
+    real-API write.
+
+In both gates:
+
+  - TENACIOUS_OUTBOUND_ENABLED unset → recipient rewritten to staff sink
+    (or, for bookings, the local-file mock at data/calcom_local/).
   - Recipient must be the sink OR a synthetic-prospect entry; anything else
     raises PolicyViolation.
   - Email payloads must carry X-Tenacious-Status: draft.
@@ -156,7 +164,17 @@ def _assert_draft_header_present(payload: Payload) -> None:
                 )
 
 
+_SINK_ENV_VAR = {"email": "EMAIL_SINK_ADDRESS", "sms": "SMS_SINK_NUMBER", "voice": "VOICE_SINK_NUMBER"}
+
+
 def _assert_recipient_allowed(to: str, channel: str) -> None:
+    if not to or not to.strip():
+        env_var = _SINK_ENV_VAR.get(channel, f"<sink for {channel!r}>")
+        raise PolicyViolation(
+            f"Resolved recipient is empty on channel {channel!r}. "
+            f"Set {env_var} in .env to a real address you own — the kill "
+            "switch routes outbound here when TENACIOUS_OUTBOUND_ENABLED is unset."
+        )
     if _recipient_is_sink(to, channel):
         return
     if _recipient_is_synthetic(to, channel):
@@ -256,3 +274,48 @@ def add_draft_header(payload: EmailPayload) -> EmailPayload:
     headers.setdefault("X-Tenacious-Status", "draft")
     payload.headers = headers
     return payload
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Booking gate
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def gate_booking(prospect_email: str) -> str:
+    """Gate a programmatic Cal.com booking attempt.
+
+    Bookings are not message-shaped, so they don't go through deliver(); but
+    they're still outbound to a third-party (Cal.com) on a real prospect's
+    behalf, so the same kill-switch policy applies.
+
+    Returns:
+        "live" — kill switch is enabled AND the prospect is on the synthetic
+                 allowlist (or is the staff sink). The caller may proceed
+                 with the real Cal.com API.
+        "sink" — kill switch is unset. The caller must NOT call the real
+                 API; route to the local-file mock at data/calcom_local/
+                 instead.
+
+    Raises:
+        PolicyViolation — kill switch is enabled but the recipient is
+        neither a synthetic prospect nor the staff sink.
+    """
+    if not settings.TENACIOUS_OUTBOUND_ENABLED:
+        _audit_log_entry({
+            "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "operation": "booking",
+            "prospect_email": prospect_email,
+            "kill_switch_enabled": False,
+            "action": "routed_to_local_sink",
+        })
+        return "sink"
+    emails, _ = _load_synthetic_prospect_addresses()
+    if prospect_email.lower() in emails:
+        return "live"
+    if prospect_email.lower() == settings.EMAIL_SINK_ADDRESS.lower():
+        return "live"
+    raise PolicyViolation(
+        f"Booking attempted for {prospect_email!r} which is neither a synthetic "
+        "prospect nor the staff sink. The kill switch is enabled but the "
+        "recipient allowlist is still enforced."
+    )

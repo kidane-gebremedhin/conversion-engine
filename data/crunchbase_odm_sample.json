@@ -1,545 +1,555 @@
 [
   {
-    "name": "Orrin Labs Inc.",
-    "domain": "orrin-labs.example",
-    "categories": ["software", "enterprise software", "data analytics"],
-    "sub_niche": "workflow analytics",
-    "headcount_band": "15_to_80",
-    "headcount_point": 42,
-    "hq_country": "US",
-    "hq_city": "San Francisco",
-    "founded_year": 2022,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 14000000, "closed_at": "2026-02-12", "source_url": "https://www.crunchbase.com/funding_round/orrin-labs-series-b"},
-      {"stage": "series_a", "amount_usd": 6000000, "closed_at": "2024-09-15", "source_url": "https://www.crunchbase.com/funding_round/orrin-labs-series-a"}
+    "name": "Delamode",
+    "domain": "delamode-group.com",
+    "categories": [
+      "E-Commerce",
+      "Logistics",
+      "Supply Chain Management"
     ],
-    "leadership": [
-      {"role": "cto", "name": "Priya Natarajan", "started_at": "2023-02-10", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "dbt", "Snowflake", "AWS", "React", "TypeScript"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.71
-  },
-  {
-    "name": "Protaige",
-    "domain": "protaige.example",
-    "categories": ["advertising", "advertising technology"],
-    "sub_niche": "adtech_ssp",
-    "headcount_band": "200_to_500",
-    "headcount_point": 320,
-    "hq_country": "US",
-    "hq_city": "New York",
-    "founded_year": 2018,
-    "funding_rounds": [
-      {"stage": "series_c", "amount_usd": 45000000, "closed_at": "2024-06-01", "source_url": "https://www.crunchbase.com/funding_round/protaige-c"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Marcus Oyelami", "started_at": "2026-02-08", "is_interim": false, "is_new_in_window": true}
-    ],
-    "tech_stack_detected": ["Python", "Go", "Kafka", "AWS", "dbt"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.68
-  },
-  {
-    "name": "Adludio Ltd.",
-    "domain": "adludio.example",
-    "categories": ["advertising", "advertising technology"],
-    "sub_niche": "adtech_ssp",
-    "headcount_band": "200_to_500",
-    "headcount_point": 450,
-    "hq_country": "GB",
-    "hq_city": "London",
-    "founded_year": 2012,
-    "funding_rounds": [
-      {"stage": "series_d_plus", "amount_usd": 30000000, "closed_at": "2023-03-15", "source_url": "https://www.crunchbase.com/funding_round/adludio-d"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Samuel Bryne", "started_at": "2020-01-15", "is_interim": false}
-    ],
-    "recent_layoff": {"date": "2026-01-25", "headcount_reduction": 54, "percentage_cut": 0.12, "source_url": "https://layoffs.fyi/adludio"},
-    "tech_stack_detected": ["Python", "Go", "PostgreSQL", "GCP", "React"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.62
-  },
-  {
-    "name": "Modo Compass",
-    "domain": "modo-compass.example",
-    "categories": ["fitness", "wellness", "franchise"],
-    "sub_niche": "multi_location_franchise",
-    "headcount_band": "200_to_500",
-    "headcount_point": 220,
-    "hq_country": "US",
-    "hq_city": "Los Angeles",
-    "founded_year": 2014,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 40000000, "closed_at": "2024-11-01", "source_url": "https://www.crunchbase.com/funding_round/modo-compass-b"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Daniel Meir", "started_at": "2023-06-22", "is_interim": false}
-    ],
-    "tech_stack_detected": ["NestJS", "Node.js", "PostgreSQL", "dbt", "Databricks"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.58
-  },
-  {
-    "name": "Helia Bioworks",
-    "domain": "helia-bioworks.example",
-    "categories": ["biotech", "healthcare", "platform"],
-    "sub_niche": "bioinformatics_platform",
-    "headcount_band": "15_to_80",
-    "headcount_point": 55,
-    "hq_country": "US",
-    "hq_city": "Boston",
-    "founded_year": 2021,
-    "funding_rounds": [
-      {"stage": "series_a", "amount_usd": 18000000, "closed_at": "2024-10-01", "source_url": "https://www.crunchbase.com/funding_round/helia-a"}
-    ],
-    "leadership": [
-      {"role": "vp_engineering", "name": "Priya Raghavan", "started_at": "2023-04-15", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "R", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.44
-  },
-  {
-    "name": "TripleLift Analytics",
-    "domain": "triplelift-analytics.example",
-    "categories": ["advertising", "advertising technology", "analytics"],
-    "sub_niche": "adtech_ssp",
-    "headcount_band": "15_to_80",
-    "headcount_point": 35,
-    "hq_country": "US",
-    "hq_city": "New York",
-    "founded_year": 2023,
-    "funding_rounds": [
-      {"stage": "series_a", "amount_usd": 8000000, "closed_at": "2025-12-20", "source_url": "https://www.crunchbase.com/funding_round/triplelift-a"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Jackson Ayala", "started_at": "2023-01-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "PostgreSQL", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.52
-  },
-  {
-    "name": "Coralty Loyalty Platform",
-    "domain": "coralty.example",
-    "categories": ["loyalty", "rewards", "b2b2c"],
-    "sub_niche": "b2b2c_loyalty",
-    "headcount_band": "500_to_2000",
-    "headcount_point": 1400,
-    "hq_country": "DE",
-    "hq_city": "Berlin",
-    "founded_year": 2010,
-    "funding_rounds": [],
-    "leadership": [
-      {"role": "cto", "name": "Andreas Kron", "started_at": "2019-05-10", "is_interim": false}
-    ],
-    "restructure_press": {"date": "2026-02-23", "source_url": "https://press.example.com/coralty-restructure"},
-    "cfo_cost_discipline_quotes": true,
-    "tech_stack_detected": ["Java", "Python", "Kafka", "Snowflake", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.60
-  },
-  {
-    "name": "Sylva Signal",
-    "domain": "sylva-signal.example",
-    "categories": ["software", "ai", "agentic systems"],
-    "sub_niche": "agentic_systems",
-    "headcount_band": "80_to_200",
-    "headcount_point": 140,
-    "hq_country": "DE",
-    "hq_city": "Munich",
-    "founded_year": 2020,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 28000000, "closed_at": "2024-08-01", "source_url": "https://www.crunchbase.com/funding_round/sylva-b"}
-    ],
-    "leadership": [
-      {"role": "head_of_ai", "name": "Roman Kovalenko", "started_at": "2022-09-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "PyTorch", "Databricks", "Weights and Biases", "vLLM"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.74
-  },
-  {
-    "name": "Addis Retail",
-    "domain": "addis-retail.example",
-    "categories": ["retail", "ecommerce"],
     "sub_niche": "retail_platform",
-    "headcount_band": "80_to_200",
-    "headcount_point": 110,
-    "hq_country": "ET",
-    "hq_city": "Addis Ababa",
-    "founded_year": 2019,
+    "headcount_band": "500_to_2000",
+    "headcount_point": 750,
+    "hq_country": "GB",
+    "founded_year": 1998,
     "funding_rounds": [],
     "leadership": [
-      {"role": "cto", "name": "Teferi Haile", "started_at": "2026-02-23", "is_interim": false, "is_new_in_window": true}
+      {
+        "role": "cto",
+        "name": "Mark Wraight",
+        "started_at": "2024-01-01",
+        "is_interim": false
+      }
     ],
-    "tech_stack_detected": ["Python", "PostgreSQL", "React"],
+    "tech_stack_detected": [],
     "corporate_investors_only": false,
     "anti_offshore_public_stance": false,
     "listed_as_competitor_client": false,
-    "rank_score": 0.35
+    "rank_score": 0.39
   },
   {
-    "name": "Koda Systems",
-    "domain": "koda-systems.example",
-    "categories": ["software", "enterprise software"],
-    "sub_niche": "workflow_platform",
-    "headcount_band": "80_to_200",
-    "headcount_point": 150,
-    "hq_country": "JP",
-    "hq_city": "Tokyo",
-    "founded_year": 2017,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 16000000, "closed_at": "2025-11-01", "source_url": "https://www.crunchbase.com/funding_round/koda-b"}
+    "name": "Conshohocken Brewing",
+    "domain": "conshohockenbrewing.com",
+    "categories": [
+      "Food and Beverage",
+      "Retail"
     ],
-    "leadership": [
-      {"role": "vp_engineering", "name": "Aiko Sato", "started_at": "2022-01-15", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "Go", "React"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.47
-  },
-  {
-    "name": "Glomar Fintech",
-    "domain": "glomar-fintech.example",
-    "categories": ["fintech", "payments"],
-    "sub_niche": "payments",
-    "headcount_band": "80_to_200",
-    "headcount_point": 180,
-    "hq_country": "IE",
-    "hq_city": "Dublin",
-    "founded_year": 2018,
-    "funding_rounds": [],
-    "leadership": [
-      {"role": "vp_engineering", "name": "Liam O'Reilly", "started_at": "2026-02-23", "is_interim": true, "is_new_in_window": true}
-    ],
-    "tech_stack_detected": ["Python", "Go", "PostgreSQL", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.50
-  },
-  {
-    "name": "Nimbus Cloud",
-    "domain": "nimbus-post-layoff.example",
-    "categories": ["cloud", "infrastructure", "platform"],
-    "sub_niche": "cloud_infra",
-    "headcount_band": "200_to_500",
-    "headcount_point": 380,
+    "sub_niche": "retail_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 75,
     "hq_country": "US",
-    "hq_city": "New York",
-    "founded_year": 2016,
-    "funding_rounds": [
-      {"stage": "series_c", "amount_usd": 20000000, "closed_at": "2026-01-08", "source_url": "https://www.crunchbase.com/funding_round/nimbus-c"}
-    ],
-    "leadership": [
-      {"role": "vp_engineering", "name": "Isabel Carvalho", "started_at": "2022-06-01", "is_interim": false}
-    ],
-    "recent_layoff": {"date": "2026-02-07", "headcount_reduction": 34, "percentage_cut": 0.09, "source_url": "https://layoffs.fyi/nimbus"},
-    "tech_stack_detected": ["Python", "Terraform", "Kubernetes", "AWS"],
+    "founded_year": 2020,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
     "corporate_investors_only": false,
     "anti_offshore_public_stance": false,
     "listed_as_competitor_client": false,
     "rank_score": 0.56
   },
   {
-    "name": "Bastion Retail",
-    "domain": "bastion-retail.example",
-    "categories": ["retail", "analytics"],
-    "sub_niche": "retail_analytics",
-    "headcount_band": "200_to_500",
-    "headcount_point": 320,
-    "hq_country": "US",
-    "hq_city": "Chicago",
-    "founded_year": 2013,
-    "funding_rounds": [],
-    "leadership": [
-      {"role": "chief_data_officer", "name": "Sara Moradi", "started_at": "2024-09-10", "is_interim": false}
+    "name": "Whitehill Technologies",
+    "domain": "whitehilltech.com",
+    "categories": [
+      "Data Center",
+      "Enterprise Software",
+      "Software"
     ],
-    "tech_stack_detected": ["Python", "Databricks", "Snowflake", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.55
-  },
-  {
-    "name": "Strom Voltaic",
-    "domain": "strom-voltaic.example",
-    "categories": ["cleantech", "energy", "software"],
-    "sub_niche": "energy_software",
-    "headcount_band": "15_to_80",
-    "headcount_point": 52,
-    "hq_country": "DE",
-    "hq_city": "Berlin",
-    "founded_year": 2023,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 22000000, "closed_at": "2026-01-18", "source_url": "https://www.crunchbase.com/funding_round/strom-b"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Hans Werner", "started_at": "2023-03-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "TimescaleDB", "AWS", "React"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.48
-  },
-  {
-    "name": "Meridian Cloud",
-    "domain": "meridian-cloud.example",
-    "categories": ["cloud", "infrastructure"],
-    "sub_niche": "cloud_infra",
-    "headcount_band": "2000_plus",
-    "headcount_point": 2500,
-    "hq_country": "US",
-    "hq_city": "San Francisco",
-    "founded_year": 2008,
-    "funding_rounds": [
-      {"stage": "series_d_plus", "amount_usd": 120000000, "closed_at": "2023-05-01", "source_url": "https://www.crunchbase.com/funding_round/meridian-d"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "George Blake", "started_at": "2022-04-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Go", "Kubernetes", "Terraform", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.82
-  },
-  {
-    "name": "Dewfall Analytics",
-    "domain": "dewfall-analytics.example",
-    "categories": ["software", "analytics", "ai"],
     "sub_niche": "workflow_analytics",
     "headcount_band": "15_to_80",
-    "headcount_point": 68,
-    "hq_country": "US",
-    "hq_city": "New York",
-    "founded_year": 2022,
+    "headcount_point": 75,
+    "hq_country": "CA",
+    "founded_year": 2000,
     "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 22000000, "closed_at": "2026-01-15", "source_url": "https://www.crunchbase.com/funding_round/dewfall-b"}
+      {
+        "stage": "series_b",
+        "amount_usd": 3413884,
+        "closed_at": "2004-11-05",
+        "source_url": "https://www.crunchbase.com/funding_round/whitehill-technologies-series-b--ce71a2f1"
+      },
+      {
+        "stage": "series_a",
+        "amount_usd": 5000000,
+        "closed_at": "2001-08-15",
+        "source_url": "https://www.crunchbase.com/funding_round/whitehill-technologies-series-a--e5e4f45f"
+      }
     ],
-    "leadership": [
-      {"role": "head_of_ai", "name": "Camille Ortega", "started_at": "2024-05-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "Databricks", "dbt", "AWS"],
+    "leadership": [],
+    "tech_stack_detected": [],
     "corporate_investors_only": false,
     "anti_offshore_public_stance": false,
     "listed_as_competitor_client": false,
-    "rank_score": 0.70
+    "rank_score": 0.36
   },
   {
-    "name": "Quillrock AdTech",
-    "domain": "quillrock-adtech.example",
-    "categories": ["advertising", "advertising technology"],
-    "sub_niche": "adtech_ssp",
+    "name": "Connempathy",
+    "domain": "connempathy.com",
+    "categories": [
+      "Call Center",
+      "Consulting",
+      "Customer Service",
+      "Information Technology"
+    ],
+    "sub_niche": "retail_platform",
+    "headcount_band": "200_to_500",
+    "headcount_point": 375,
+    "hq_country": "US",
+    "founded_year": 2010,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [
+      "Google Cloud"
+    ],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.46
+  },
+  {
+    "name": "Consolidated Parts",
+    "domain": "consolidatedparts.com",
+    "categories": [
+      "Electrical Distribution",
+      "Energy",
+      "Supply Chain Management",
+      "Wholesale"
+    ],
+    "sub_niche": "energy_software",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 1956,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.6
+  },
+  {
+    "name": "Alliance Hospice",
+    "domain": "alliancehospice.com",
+    "categories": [
+      "Elder Care",
+      "Health Care",
+      "Hospitality",
+      "Management Consulting"
+    ],
+    "sub_niche": "healthcare_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 75,
+    "hq_country": "US",
+    "founded_year": 2005,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.36
+  },
+  {
+    "name": "Americraft",
+    "domain": "americraftmfg.com",
+    "categories": [
+      "Industrial",
+      "Machinery Manufacturing",
+      "Manufacturing"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 1946,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.45
+  },
+  {
+    "name": "Five Star Carting",
+    "domain": "fivestarcarting.com",
+    "categories": [
+      "Recycling",
+      "Waste Management"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 1971,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.67
+  },
+  {
+    "name": "La Coop Comax",
+    "domain": "comax.coop",
+    "categories": [
+      "Agriculture",
+      "Farming",
+      "Wholesale"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "200_to_500",
+    "headcount_point": 375,
+    "hq_country": "CA",
+    "founded_year": 1944,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.62
+  },
+  {
+    "name": "Window Classics",
+    "domain": "windowclassics.com",
+    "categories": [
+      "Building Material",
+      "Home Improvement",
+      "Wholesale"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 1978,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.46
+  },
+  {
+    "name": "Wiring Technologies",
+    "domain": "wiringtech.com",
+    "categories": [
+      "Telecommunications"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 75,
+    "hq_country": "US",
+    "founded_year": 1994,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.64
+  },
+  {
+    "name": "Amerisk Engineering",
+    "domain": "ameriskengineering.com",
+    "categories": [
+      "Facility Management",
+      "Industrial Engineering",
+      "Risk Management"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 1996,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.75
+  },
+  {
+    "name": "Constantin Hang Machine Production",
+    "domain": "hang.de",
+    "categories": [
+      "Industrial",
+      "Manufacturing",
+      "Product Design"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "DE",
+    "founded_year": 2020,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.35
+  },
+  {
+    "name": "Connect It Utilities",
+    "domain": "cius.co.uk",
+    "categories": [
+      "Electronics",
+      "Field Support",
+      "Smart Cities"
+    ],
+    "sub_niche": "workflow_platform",
     "headcount_band": "80_to_200",
-    "headcount_point": 140,
+    "headcount_point": 175,
     "hq_country": "GB",
-    "hq_city": "London",
-    "founded_year": 2017,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 25000000, "closed_at": "2024-04-01", "source_url": "https://www.crunchbase.com/funding_round/quillrock-b"}
+    "founded_year": 2001,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.75
+  },
+  {
+    "name": "Alpha Ball Screw",
+    "domain": "alphaballscrew.com",
+    "categories": [
+      "Industrial",
+      "Manufacturing",
+      "Wholesale"
     ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 2019,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.7
+  },
+  {
+    "name": "Alpine Collision",
+    "domain": "alpine-collision.com",
+    "categories": [
+      "Automotive",
+      "Customer Service"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 2001,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.52
+  },
+  {
+    "name": "Connect TV",
+    "domain": "connecttv.se",
+    "categories": [
+      "Broadcasting",
+      "Media and Entertainment",
+      "TV"
+    ],
+    "sub_niche": "agentic_systems",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "SE",
+    "founded_year": 2010,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.43
+  },
+  {
+    "name": "Tuff Girl - Body And Nutrition",
+    "domain": "tuffgirl.com",
+    "categories": [
+      "Beauty",
+      "Health Care",
+      "Wellness"
+    ],
+    "sub_niche": "healthcare_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 75,
+    "hq_country": "US",
+    "founded_year": 2008,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.83
+  },
+  {
+    "name": "River Point Realty",
+    "domain": "riverpointpgh.com",
+    "categories": [
+      "Commercial Real Estate",
+      "Real Estate",
+      "Real Estate Investment"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "US",
+    "founded_year": 2016,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.52
+  },
+  {
+    "name": "Cavendish Ships Stores",
+    "domain": "cavendishfoods.co.uk",
+    "categories": [
+      "Ferry Service",
+      "Logistics",
+      "Shipping",
+      "Wholesale"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "GB",
+    "founded_year": 1978,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.4
+  },
+  {
+    "name": "SYMA TECH",
+    "domain": "syma-tech.de",
+    "categories": [
+      "Customer Service",
+      "Industrial",
+      "Quality Assurance"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 30,
+    "hq_country": "DE",
+    "founded_year": 2002,
+    "funding_rounds": [],
     "leadership": [
-      {"role": "vp_engineering", "name": "Ren Nakamura", "started_at": "2021-07-01", "is_interim": false}
+      {
+        "role": "cto",
+        "name": "Jens Hanl",
+        "started_at": "2024-01-01",
+        "is_interim": false
+      }
     ],
-    "tech_stack_detected": ["Python", "Go", "Kafka", "Databricks"],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.4
+  },
+  {
+    "name": "Sycamore Hill Capital Corporation",
+    "domain": "sycamorehillcapital.com",
+    "categories": [
+      "Finance",
+      "Financial Services"
+    ],
+    "sub_niche": "payments",
+    "headcount_band": "80_to_200",
+    "headcount_point": 175,
+    "hq_country": "US",
+    "founded_year": 1993,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
+    "corporate_investors_only": false,
+    "anti_offshore_public_stance": false,
+    "listed_as_competitor_client": false,
+    "rank_score": 0.77
+  },
+  {
+    "name": "Conseil Telecom",
+    "domain": "conseil-telecom.net",
+    "categories": [
+      "Internet",
+      "Telecommunications",
+      "VoIP"
+    ],
+    "sub_niche": "workflow_platform",
+    "headcount_band": "15_to_80",
+    "headcount_point": 75,
+    "hq_country": "FR",
+    "founded_year": 2009,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
     "corporate_investors_only": false,
     "anti_offshore_public_stance": false,
     "listed_as_competitor_client": false,
     "rank_score": 0.65
   },
   {
-    "name": "Sturgeon Data",
-    "domain": "sturgeon-data.example",
-    "categories": ["software", "data analytics"],
-    "sub_niche": "workflow_analytics",
-    "headcount_band": "15_to_80",
-    "headcount_point": 25,
-    "hq_country": "PL",
-    "hq_city": "Warsaw",
-    "founded_year": 2024,
-    "funding_rounds": [
-      {"stage": "series_a", "amount_usd": 7000000, "closed_at": "2026-02-01", "source_url": "https://www.crunchbase.com/funding_round/sturgeon-a"}
+    "name": "Conqueror Industries",
+    "domain": "c-i-ltd.co.uk",
+    "categories": [
+      "Chemical",
+      "Chemical Engineering",
+      "Industrial"
     ],
-    "leadership": [
-      {"role": "cto", "name": "Olena Baranov", "started_at": "2024-02-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "PostgreSQL", "React"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.41
-  },
-  {
-    "name": "Holt Fitness Franchise",
-    "domain": "holt-fitness.example",
-    "categories": ["fitness", "franchise", "multi-location"],
-    "sub_niche": "multi_location_franchise",
-    "headcount_band": "80_to_200",
-    "headcount_point": 180,
-    "hq_country": "US",
-    "hq_city": "New York",
-    "founded_year": 2011,
-    "funding_rounds": [],
-    "leadership": [
-      {"role": "cto", "name": "Mark Kendall", "started_at": "2021-02-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["NestJS", "React", "PostgreSQL", "Twilio"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.51
-  },
-  {
-    "name": "Flint Payments",
-    "domain": "flint-payments.example",
-    "categories": ["fintech", "payments"],
-    "sub_niche": "payments",
-    "headcount_band": "15_to_80",
-    "headcount_point": 58,
-    "hq_country": "FR",
-    "hq_city": "Paris",
-    "founded_year": 2021,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 18000000, "closed_at": "2025-11-20", "source_url": "https://www.crunchbase.com/funding_round/flint-b"}
-    ],
-    "leadership": [
-      {"role": "chief_data_officer", "name": "Talia Benayoun", "started_at": "2023-06-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "dbt", "Snowflake", "AWS"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.57
-  },
-  {
-    "name": "Pharos Fintech",
-    "domain": "pharos-fintech.example",
-    "categories": ["fintech", "payments"],
-    "sub_niche": "payments",
-    "headcount_band": "200_to_500",
-    "headcount_point": 320,
-    "hq_country": "GB",
-    "hq_city": "London",
-    "founded_year": 2016,
-    "funding_rounds": [],
-    "leadership": [
-      {"role": "cto", "name": "Omar Said", "started_at": "2026-03-24", "is_interim": false, "is_new_in_window": true}
-    ],
-    "tech_stack_detected": ["Python", "Go", "PostgreSQL", "GCP"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.59
-  },
-  {
-    "name": "Silo Contracts",
-    "domain": "silo-contracts.example",
-    "categories": ["software", "legal tech"],
-    "sub_niche": "legal_tech",
-    "headcount_band": "15_to_80",
-    "headcount_point": 40,
-    "hq_country": "US",
-    "hq_city": "Austin",
-    "founded_year": 2023,
-    "funding_rounds": [
-      {"stage": "series_a", "amount_usd": 9000000, "closed_at": "2026-02-05", "source_url": "https://www.crunchbase.com/funding_round/silo-a"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Nora Wexler", "started_at": "2023-02-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "PostgreSQL"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": false,
-    "listed_as_competitor_client": true,
-    "rank_score": 0.40
-  },
-  {
-    "name": "Beacon Direct",
-    "domain": "beacon-direct.example",
-    "categories": ["software", "enterprise software"],
     "sub_niche": "workflow_platform",
     "headcount_band": "15_to_80",
     "headcount_point": 30,
-    "hq_country": "DK",
-    "hq_city": "Copenhagen",
-    "founded_year": 2023,
-    "funding_rounds": [
-      {"stage": "series_a", "amount_usd": 6000000, "closed_at": "2025-12-10", "source_url": "https://www.crunchbase.com/funding_round/beacon-a"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Kai Norgaard", "started_at": "2023-02-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "Go"],
-    "corporate_investors_only": false,
-    "anti_offshore_public_stance": true,
-    "listed_as_competitor_client": false,
-    "rank_score": 0.45
-  },
-  {
-    "name": "Lamina Health",
-    "domain": "lamina-health.example",
-    "categories": ["healthcare", "platform"],
-    "sub_niche": "healthcare_platform",
-    "headcount_band": "200_to_500",
-    "headcount_point": 220,
-    "hq_country": "US",
-    "hq_city": "New York",
-    "founded_year": 2015,
-    "funding_rounds": [
-      {"stage": "series_c", "amount_usd": 50000000, "closed_at": "2023-09-01", "source_url": "https://www.crunchbase.com/funding_round/lamina-c"}
-    ],
-    "leadership": [
-      {"role": "cto", "name": "Ava Ndumbe", "started_at": "2020-01-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "PostgreSQL", "AWS"],
+    "hq_country": "GB",
+    "founded_year": 1992,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
     "corporate_investors_only": false,
     "anti_offshore_public_stance": false,
     "listed_as_competitor_client": false,
-    "rank_score": 0.53
+    "rank_score": 0.75
   },
   {
-    "name": "Crescent AI",
-    "domain": "crescent-ai.example",
-    "categories": ["ai", "software", "enterprise software"],
-    "sub_niche": "workflow_analytics",
+    "name": "American Metal Roofs",
+    "domain": "americanmetalroofs.com",
+    "categories": [
+      "Building Maintenance",
+      "Construction",
+      "Home Renovation",
+      "Property Management"
+    ],
+    "sub_niche": "agentic_systems",
     "headcount_band": "15_to_80",
-    "headcount_point": 60,
+    "headcount_point": 30,
     "hq_country": "US",
-    "hq_city": "San Francisco",
-    "founded_year": 2022,
-    "funding_rounds": [
-      {"stage": "series_b", "amount_usd": 30000000, "closed_at": "2025-10-05", "source_url": "https://www.crunchbase.com/funding_round/crescent-b"}
-    ],
-    "leadership": [
-      {"role": "head_of_ai", "name": "Tobias Meier", "started_at": "2023-02-01", "is_interim": false}
-    ],
-    "tech_stack_detected": ["Python", "PyTorch", "Databricks", "vLLM"],
+    "founded_year": 2000,
+    "funding_rounds": [],
+    "leadership": [],
+    "tech_stack_detected": [],
     "corporate_investors_only": false,
     "anti_offshore_public_stance": false,
     "listed_as_competitor_client": false,
-    "rank_score": 0.73
+    "rank_score": 0.71
   }
 ]

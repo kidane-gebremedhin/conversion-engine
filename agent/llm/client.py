@@ -140,18 +140,28 @@ def _call_openrouter(
         kwargs["seed"] = seed
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
+    # OpenRouter fallback chain: if DEV_LLM_FALLBACK_MODELS is set, pass the
+    # primary + fallbacks via the OpenRouter-specific `models` array. On a
+    # rate-limit / 5xx / timeout from the primary, OpenRouter automatically
+    # retries the next slug — single API call, no client-side retry needed.
+    fallbacks = [m.strip() for m in settings.DEV_LLM_FALLBACK_MODELS.split(",") if m.strip()]
+    if fallbacks:
+        kwargs["extra_body"] = {"models": [model, *fallbacks]}
     resp = client.chat.completions.create(**kwargs)
     choice = resp.choices[0]
     usage = getattr(resp, "usage", None)
     pt = getattr(usage, "prompt_tokens", 0) if usage else 0
     ct = getattr(usage, "completion_tokens", 0) if usage else 0
+    # OpenRouter sets resp.model to the slug it actually used — capture that
+    # so a fallback hit shows up in traces and cost attribution.
+    actual_model = getattr(resp, "model", None) or model
     return LlmCall(
         text=choice.message.content or "",
-        model=model, tier="dev",
+        model=actual_model, tier="dev",
         prompt_tokens=pt, completion_tokens=ct,
-        cost_usd=cost_usd(model, pt, ct),
+        cost_usd=cost_usd(actual_model, pt, ct),
         finish_reason=choice.finish_reason or "stop",
-        raw={"id": resp.id},
+        raw={"id": resp.id, "requested_model": model},
     )
 
 

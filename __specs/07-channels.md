@@ -12,6 +12,8 @@ Matching channel to segment is a deliberate scope choice. Tenacious's prospects 
 | **SMS** | ✗ banned | ✓ scheduling coordination only | Confirming a slot, moving a time, sending a Cal link |
 | **Voice** | ✗ banned | ✓ booked discovery call (human) | 15–30 minute scoping conversation |
 
+All three message channels above, **plus programmatic Cal.com booking-creation**, share a single kill-switch flag (`TENACIOUS_OUTBOUND_ENABLED`). When the flag is unset, all four route to a staff-controlled sink — email, SMS, and voice via `deliver()`, bookings via `gate_booking()` + the local-file mock at `data/calcom_local/`. See [spec 16 Rule 5](16-data-handling-and-kill-switch.md) for the contract.
+
 ## Email channel
 
 ### Provider

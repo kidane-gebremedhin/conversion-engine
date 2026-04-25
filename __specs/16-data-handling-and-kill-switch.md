@@ -12,7 +12,7 @@ Enforcement: a CI check scans committed files for patterns that could plausibly 
 
 ## Rule 2 — Every prospect the system contacts during the challenge week is synthetic
 
-Every prospect in `data/synthetic_prospects.json` is a **synthetic profile** derived from public Crunchbase firmographics combined with **fictitious contact details**. Program-operated email and phone addresses replace real ones. The program's SMS rig routes all outbound to a staff-controlled sink.
+Every prospect in `data/synthetic_prospects.json` is a **synthetic profile** derived from public **Crunchbase, LinkedIn job-post, and layoffs.fyi** data, combined with **fictitious contact details** (program-operated names, email addresses, and phone numbers). No outbound from this system ever reaches the real companies whose firmographics seeded the profile — the program-operated email, SMS, voice, and booking rigs all route to a staff-controlled sink.
 
 **You may not use real company contact addresses.** Not even ones found on a public website. A `contact@examplecompany.com` in the queue **resolves to the sink**, not to the real company.
 
@@ -20,6 +20,7 @@ Enforcement:
 
 - `data/synthetic_prospects.json` is the **only** allowed source of prospect contact records. A runtime check in `agent/kill_switch.py` asserts the recipient is drawn from this file **or** matches the staff sink pattern.
 - Any other recipient raises `PolicyViolation` and halts the process.
+- The data-source enrichment pipeline (`agent/enrichment/crunchbase.py`, `agent/enrichment/jobposts.py`, `agent/enrichment/layoffs.py`, `agent/enrichment/leadership.py`) only **reads** from these public sources; it never writes back, posts, or contacts any party associated with them.
 
 ## Rule 3 — Seed materials are licensed for the challenge week only
 
@@ -59,7 +60,9 @@ Enforcement (`agent/enrichment/jobposts.py`, `agent/enrichment/leadership.py`):
 
 ### Contract
 
-The kill switch is a single function, `deliver(channel, to, payload) -> message_id`, in `agent/kill_switch.py`. **No other code path from agent to external sender exists.** This is the load-bearing policy boundary.
+The kill switch is a single configuration flag — `TENACIOUS_OUTBOUND_ENABLED` — that, **when unset, routes every outbound action (emails, SMS, voice calls, and booking-creations) to a staff-controlled sink**. Two functions in `agent/kill_switch.py` enforce it. **No other code path from the agent to an external sender exists.** This is the load-bearing policy boundary.
+
+**Message-shaped outbound** (email, SMS, voice) flows through `deliver()`:
 
 ```python
 def deliver(channel: Channel, to: str, payload: Payload) -> MessageId:
@@ -72,16 +75,32 @@ def deliver(channel: Channel, to: str, payload: Payload) -> MessageId:
     return _channel_adapter(channel).send(to, payload)
 ```
 
+**Booking-shaped outbound** (programmatic Cal.com event creation) flows through `gate_booking()`, called by `agent/calendar/client.py:create_booking()`:
+
+```python
+def gate_booking(prospect_email: str) -> Literal["live", "sink"]:
+    if not settings.TENACIOUS_OUTBOUND_ENABLED:
+        return "sink"           # caller must write to data/calcom_local/, not the real API
+    if not _recipient_is_synthetic_or_sink(prospect_email, "email"):
+        raise PolicyViolation(...)
+    return "live"
+```
+
+A "sink" decision forces the booking to be written to the local-file mock at `data/calcom_local/bookings.jsonl` instead of hitting the real Cal.com API. No real prospect's calendar can receive an invite from the agent while the kill switch is unset.
+
+The challenge's webhook-only Cal.com architecture (the prospect self-books through a public link the agent emailed) means real bookings only exist when (a) a real human consciously books and (b) the email containing that link wasn't sink-routed — i.e., when the kill switch is intentionally enabled.
+
 ### Configuration
 
-- `TENACIOUS_OUTBOUND_ENABLED` — **defaults to unset**. `.env.example` ships with the line commented out.
+- `TENACIOUS_OUTBOUND_ENABLED` — **defaults to unset**. `.env.example` ships with the line commented out. When unset, the four outbound channels (email, SMS, voice, booking) all route to their respective staff-controlled sinks.
 - `EMAIL_SINK_ADDRESS`, `SMS_SINK_NUMBER`, `VOICE_SINK_NUMBER` — staff-controlled destinations, provided by program staff.
+- Booking sink: the local-file mock at `data/calcom_local/bookings.jsonl` (no env var; the path is fixed).
 - Flipping `TENACIOUS_OUTBOUND_ENABLED=1` requires program-staff approval (the approval is logged and required as part of the pilot-selection process).
 
 ### Enforcement at three levels
 
-1. **In code**: the kill switch is the only sender path. A CI grep fails the build if any file outside `agent/kill_switch.py` imports a provider SDK (`resend`, `mailersend`, `africastalking`, voice rig) and calls its send method directly.
-2. **At runtime**: `deliver()` asserts the recipient is either a synthetic-prospect address (from `data/synthetic_prospects.json`) or the staff sink. Any other recipient raises `PolicyViolation`.
+1. **In code**: the kill switch is the only sender path. A CI grep fails the build if any file outside `agent/kill_switch.py` imports a provider SDK (`resend`, `mailersend`, `africastalking`, voice rig) and calls its send method directly. The same grep also fails the build if any file outside `agent/calendar/client.py` calls Cal.com's booking-creation endpoint without going through `gate_booking()` first.
+2. **At runtime**: `deliver()` and `gate_booking()` both assert the recipient is either a synthetic-prospect address (from `data/synthetic_prospects.json`) or the staff sink. Any other recipient raises `PolicyViolation`.
 3. **At boot**: `infra/smoke_test.sh` confirms the kill-switch gate is wired before the agent starts processing outbound. A failure is a Day-1 readiness blocker.
 
 ### The contract documented in README
@@ -152,7 +171,8 @@ Per `policy/acknowledgement.md`:
 ## Summary: what the implementation must NOT do
 
 - Import a provider SDK outside `agent/kill_switch.py` or its channel adapters.
-- Send outbound to an address that is not the staff sink or a synthetic-prospect address.
+- Send outbound (email, SMS, voice, **or booking-creation**) to an address that is not the staff sink or a synthetic-prospect address.
+- Call Cal.com's booking-creation API from any path other than `agent/calendar/client.py:create_booking()`, and that path must consult `gate_booking()` first.
 - Ship outbound without the `X-Tenacious-Status: draft` header.
 - Scrape more than 200 distinct domains during the challenge week.
 - Log PII beyond first name and email.

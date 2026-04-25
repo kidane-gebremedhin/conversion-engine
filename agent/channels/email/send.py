@@ -46,7 +46,12 @@ def _send_resend(to: str, payload: EmailPayload) -> tuple[str, str]:
         "Content-Type": "application/json",
     }
     r = httpx.post("https://api.resend.com/emails", json=body, headers=headers, timeout=30)
-    r.raise_for_status()
+    if r.status_code >= 400:
+        # Surface Resend's response body — httpx's default error swallows it.
+        raise RuntimeError(
+            f"Resend rejected the request ({r.status_code}): {r.text} "
+            f"(from={settings.RESEND_FROM_ADDRESS!r}, to={to!r})"
+        )
     return r.json().get("id", ""), "resend"
 
 

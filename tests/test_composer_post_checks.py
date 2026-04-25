@@ -10,16 +10,16 @@ from agent.enrichment.pipeline import enrich
 
 def _prospect():
     return {
-        "prospect_email": "sink@test.example",
-        "prospect_name": "Dana Fox",
+        "prospect_email": "elena.romero@delamode-group.com",
+        "prospect_name": "Elena Romero",
         "prospect_title": "VP Engineering",
-        "prospect_company": "Orrin Labs",
-        "prospect_timezone": "America/New_York",
+        "prospect_company": "Delamode",
+        "prospect_timezone": "America/Los_Angeles",
     }
 
 
 def test_segment_4_refuses_low_ai_maturity():
-    brief, _ = enrich("orrin-labs.example")
+    brief, _ = enrich("delamode-group.com")
     # Orrin Labs comes in at score ≤ 2 in the fixture; downgrade forcibly.
     brief.ai_maturity.score = 0
     with pytest.raises(SegmentMismatch):
@@ -31,7 +31,7 @@ def test_segment_4_refuses_low_ai_maturity():
 
 
 def test_stub_mode_fallback_passes_post_checks():
-    brief, gap = enrich("orrin-labs.example")
+    brief, gap = enrich("delamode-group.com")
     draft = compose(
         segment="segment_1_series_a_b",
         brief=brief, gap_brief=gap, prospect=_prospect(),

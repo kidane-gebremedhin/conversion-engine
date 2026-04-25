@@ -31,16 +31,18 @@ Stand up the full production stack so that one synthetic prospect can be enriche
    - Resolves `${PLACEHOLDER}` entries in YAML from `seed/baseline_numbers.md` and `seed/bench_summary.json`.
    - Asserts every required field; masks secrets in debug output.
 2. Implement `agent/kill_switch.py`:
-   - One function `deliver(channel, to, payload) -> MessageId`.
-   - Rewrites `to` to the sink when `TENACIOUS_OUTBOUND_ENABLED` is unset.
+   - `deliver(channel, to, payload) -> MessageId` for message-shaped outbound (email/SMS/voice).
+   - `gate_booking(prospect_email) -> "live" | "sink"` for programmatic Cal.com booking-creation.
+   - Both rewrite to the sink when `TENACIOUS_OUTBOUND_ENABLED` is unset; bookings are forced to the local-file mock at `data/calcom_local/bookings.jsonl`.
    - Asserts `X-Tenacious-Status: draft` header present on email payloads.
-   - Asserts recipient is either staff sink or in `data/synthetic_prospects.json`.
-   - Emits a `deliver.*` Langfuse span.
-3. Add a CI grep test: fail the build if any file outside `agent/kill_switch.py` or `agent/channels/*/send.py` imports the provider send methods.
+   - Asserts recipient is either staff sink or in `data/synthetic_prospects.json` (for both gates).
+   - Emits a `deliver.*` Langfuse span and a local audit-log line for both gates.
+3. Wire `agent/calendar/client.py:create_booking()` to consult `gate_booking()` before any real-API write.
+4. Add a CI grep test: fail the build if any file outside `agent/kill_switch.py` or `agent/channels/*/send.py` imports the provider send methods. Same grep also fails the build if any file outside `agent/calendar/client.py` calls Cal.com's bookings endpoint.
 
 ### 3.2 Synthetic prospects fixture
 
-1. Write `data/synthetic_prospects.json` — at least 25 prospects derived from Crunchbase records, with fictitious email addresses routed to the sink. Include variety:
+1. Write `data/synthetic_prospects.json` — at least 25 prospects derived from public **Crunchbase, LinkedIn job-post, and layoffs.fyi** data, combined with fictitious contact details (program-operated names; email addresses of the form `<role>+trp1-sink@example.com` — `example.com` is RFC 2606 §3 IANA-reserved so it cannot resolve to a real inbox, the `+trp1-sink` subaddress signals the program-week sink, and HubSpot's email validator accepts the format as-is; phone numbers in the `+1-555-01xx` reserved fictitious-number range). The `company_domain` field stays on the `*.example` reserved TLD (it is a lookup key, never an outbound recipient). The enrichment pipeline only **reads** from the three public sources; it never writes back, posts, or contacts any party associated with them. Include variety:
    - 5 in each of Segments 1, 2, 3, 4.
    - 5 edge cases (layoff+funding, interim CTO, AI-maturity 0 vs 3, bench-gap, multi-thread).
 2. Include `prospect_email`, `prospect_name`, `prospect_company`, `prospect_title`, `company_domain` (matches a Crunchbase ODM entry), `expected_segment`, `expected_ai_maturity_score`, `notes`.

@@ -1,374 +1,1427 @@
 {
   "snapshot_date": "2026-04-01",
   "comparison_window_60d_prior_date": "2026-02-01",
-  "notes": "Synthetic job-post snapshot. Counts are both as-of snapshot_date and (historical) as-of the 60-day-prior date. Per-company, roles are listed with title, posted_at, and AI-adjacency label.",
+  "notes": "Job-post snapshot derived from real Crunchbase firmographics. Role counts and titles simulated for synthetic prospects.",
   "companies": {
-    "orrin-labs.example": {
+    "delamode-group.com": {
       "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-20", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Data Platform Engineer", "posted_at": "2026-02-22", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Data Platform Engineer", "posted_at": "2026-03-04", "ai_adjacent": true, "source": "builtin"},
-        {"title": "ML Engineer", "posted_at": "2026-03-08", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Python Engineer", "posted_at": "2026-01-12", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Python Engineer (Platform)", "posted_at": "2026-02-11", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Engineering Manager", "posted_at": "2026-03-12", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Frontend Engineer", "posted_at": "2026-02-28", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "SRE", "posted_at": "2026-03-02", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Senior Backend Engineer", "posted_at": "2026-03-15", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Analytics Engineer", "posted_at": "2026-03-20", "ai_adjacent": false, "source": "builtin"}
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-02-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-01-23",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "AI Platform Engineer",
+          "posted_at": "2026-01-10",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "LLM Engineer",
+          "posted_at": "2026-01-07",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "Data Platform Engineer",
+          "posted_at": "2026-01-16",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "ML Engineer",
+          "posted_at": "2026-03-08",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-01-27",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "LLM Engineer",
+          "posted_at": "2026-01-05",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-03-21",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-01-13",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "SRE",
+          "posted_at": "2026-03-08",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-03-22",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-01-17",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-01-01",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-01-04",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Data Platform Engineer",
+          "posted_at": "2026-01-12",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-02-09",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "AI Product Manager",
+          "posted_at": "2026-02-11",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Applied Scientist",
+          "posted_at": "2026-03-12",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-01-13",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "NLP Engineer",
+          "posted_at": "2026-01-11",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "LLM Engineer",
+          "posted_at": "2026-02-23",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-02-25",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "AI Product Manager",
+          "posted_at": "2026-01-25",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-02-22",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Computer Vision Engineer",
+          "posted_at": "2026-02-21",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Applied Scientist",
+          "posted_at": "2026-01-01",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 25,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [
+        {
+          "title": "Agentic Systems as Strategy",
+          "url": "https://delamode-group.com/blog/ai-strategy",
+          "date": "2026-03-07"
+        }
+      ],
+      "github_public_org": {
+        "url": "https://github.com/delamode-group",
+        "ai_repos_recent": 1,
+        "total_repos": 6
+      },
+      "builtwith": []
+    },
+    "conshohockenbrewing.com": {
+      "open_roles_today": [
+        {
+          "title": "NLP Engineer",
+          "posted_at": "2026-02-19",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-03-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "SRE",
+          "posted_at": "2026-01-27",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-03-16",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-03-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "SRE",
+          "posted_at": "2026-03-09",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Computer Vision Engineer",
+          "posted_at": "2026-01-24",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 5,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/conshohockenbrewing",
+        "ai_repos_recent": 1,
+        "total_repos": 3
+      },
+      "builtwith": []
+    },
+    "whitehilltech.com": {
+      "open_roles_today": [
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-03-21",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-02-20",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-02-23",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-02-02",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-01-23",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
       ],
       "open_roles_60d_ago_count": 4,
       "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/whitehilltech",
+        "ai_repos_recent": 0,
+        "total_repos": 7
+      },
+      "builtwith": []
+    },
+    "connempathy.com": {
+      "open_roles_today": [
+        {
+          "title": "ML Engineer",
+          "posted_at": "2026-01-07",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-02-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "NLP Engineer",
+          "posted_at": "2026-01-17",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Computer Vision Engineer",
+          "posted_at": "2026-03-12",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Applied Scientist",
+          "posted_at": "2026-02-20",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "AI Platform Engineer",
+          "posted_at": "2026-01-07",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Applied Scientist",
+          "posted_at": "2026-01-28",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-02-10",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "AI Product Manager",
+          "posted_at": "2026-02-20",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-02-12",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Applied Scientist",
+          "posted_at": "2026-03-21",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-03-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-02-17",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-03-14",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-01-25",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-01-14",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-02-12",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        }
+      ],
+      "open_roles_60d_ago_count": 9,
+      "ai_ml_leadership_named": false,
       "exec_commentary_last_12m": [
-        {"title": "2026 Roadmap: AI-powered insights", "url": "https://orrin-labs.example/blog/2026-roadmap", "date": "2026-02-05"}
+        {
+          "title": "Agentic Systems as Strategy",
+          "url": "https://connempathy.com/blog/ai-strategy",
+          "date": "2026-01-14"
+        }
       ],
-      "github_public_org": {"url": "https://github.com/orrin-labs", "ai_repos_recent": 0, "total_repos": 4},
-      "builtwith": ["dbt", "Snowflake"]
+      "github_public_org": {
+        "url": "https://github.com/connempathy",
+        "ai_repos_recent": 1,
+        "total_repos": 6
+      },
+      "builtwith": []
     },
-    "protaige.example": {
+    "consolidatedparts.com": {
       "open_roles_today": [
-        {"title": "Staff Engineer, Ads Platform", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "MLOps Engineer", "posted_at": "2026-03-10", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Data Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Backend Engineer (Go)", "posted_at": "2026-03-18", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Applied Scientist", "posted_at": "2026-03-20", "ai_adjacent": true, "source": "builtin"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/protaige", "ai_repos_recent": 0, "total_repos": 6},
-      "builtwith": ["Kafka", "dbt"]
-    },
-    "adludio.example": {
-      "open_roles_today": [
-        {"title": "Senior Go Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "MLOps Engineer", "posted_at": "2026-04-01", "ai_adjacent": true, "source": "builtin"},
-        {"title": "MLOps Engineer", "posted_at": "2026-04-03", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-15", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 8,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/adludio", "ai_repos_recent": 0, "total_repos": 5},
-      "builtwith": ["GCP"]
-    },
-    "modo-compass.example": {
-      "open_roles_today": [
-        {"title": "NestJS Engineer", "posted_at": "2026-02-20", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Senior Data Engineer (Databricks)", "posted_at": "2026-01-10", "ai_adjacent": false, "source": "builtin"},
-        {"title": "ML Platform Engineer", "posted_at": "2026-01-25", "ai_adjacent": true, "source": "builtin"},
-        {"title": "AI Product Manager", "posted_at": "2026-02-14", "ai_adjacent": true, "source": "linkedin_public"}
+        {
+          "title": "MLOps Engineer",
+          "posted_at": "2026-01-17",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "ML Engineer",
+          "posted_at": "2026-03-11",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "MLOps Engineer",
+          "posted_at": "2026-03-17",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Data Platform Engineer",
+          "posted_at": "2026-02-17",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        }
       ],
       "open_roles_60d_ago_count": 3,
       "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Head of AI", "name": "Sophia Krieger", "url": "https://modo-compass.example/team"}],
       "exec_commentary_last_12m": [
-        {"title": "Our AI-driven configuration assistant", "url": "https://modo-compass.example/blog/ai-config", "date": "2025-11-12"}
+        {
+          "title": "AI Strategy Update",
+          "url": "https://consolidatedparts.com/blog/ai-strategy",
+          "date": "2026-03-30"
+        }
       ],
-      "github_public_org": {"url": "https://github.com/modo-compass", "ai_repos_recent": 2, "total_repos": 8},
-      "builtwith": ["dbt", "Databricks"]
+      "github_public_org": {
+        "url": "https://github.com/consolidatedparts",
+        "ai_repos_recent": 1,
+        "total_repos": 10
+      },
+      "builtwith": [],
+      "ai_ml_leaders": [
+        {
+          "title": "Chief Scientist",
+          "name": "Nora Moradi",
+          "url": "https://consolidatedparts.com/team"
+        }
+      ]
     },
-    "helia-bioworks.example": {
+    "alliancehospice.com": {
       "open_roles_today": [
-        {"title": "Bioinformatics Engineer", "posted_at": "2026-02-10", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-02", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Full-stack Engineer", "posted_at": "2026-03-15", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Data Analyst", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 3,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/helia-bioworks", "ai_repos_recent": 0, "total_repos": 2},
-      "builtwith": []
-    },
-    "triplelift-analytics.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-01", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Data Engineer", "posted_at": "2026-02-15", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "AI Platform Engineer", "posted_at": "2026-03-10", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Frontend Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Site Reliability Engineer", "posted_at": "2026-02-25", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-18", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Analytics Engineer", "posted_at": "2026-03-20", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 3,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/triplelift-analytics", "ai_repos_recent": 0, "total_repos": 3},
-      "builtwith": []
-    },
-    "coralty.example": {
-      "open_roles_today": [
-        {"title": "Senior Java Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Engineering Manager", "posted_at": "2026-03-20", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Data Engineer", "posted_at": "2026-04-01", "ai_adjacent": false, "source": "builtin"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-28", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 12,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/coralty", "ai_repos_recent": 0, "total_repos": 7},
-      "builtwith": ["Kafka", "Snowflake"]
-    },
-    "sylva-signal.example": {
-      "open_roles_today": [
-        {"title": "Agentic Systems Engineer", "posted_at": "2026-01-05", "ai_adjacent": true, "source": "builtin"},
-        {"title": "AI Platform Engineer", "posted_at": "2026-01-05", "ai_adjacent": true, "source": "builtin"},
-        {"title": "ML Engineer (LLM)", "posted_at": "2026-02-10", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Applied Scientist", "posted_at": "2026-02-20", "ai_adjacent": true, "source": "linkedin_public"},
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-25", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Platform Engineer (Infra)", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 4,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Head of AI", "name": "Roman Kovalenko", "url": "https://sylva-signal.example/team"}],
-      "exec_commentary_last_12m": [
-        {"title": "Agentic Systems as Strategy 2026", "url": "https://sylva-signal.example/blog/agentic-2026", "date": "2026-01-18"}
-      ],
-      "github_public_org": {"url": "https://github.com/sylva-signal", "ai_repos_recent": 5, "total_repos": 11},
-      "builtwith": ["Databricks", "Weights and Biases", "vLLM"]
-    },
-    "addis-retail.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "React Engineer", "posted_at": "2026-03-08", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Full-stack Engineer", "posted_at": "2026-03-20", "ai_adjacent": false, "source": "linkedin_public"}
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-03-17",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-03-17",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
       ],
       "open_roles_60d_ago_count": 1,
       "ai_ml_leadership_named": false,
       "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/addis-retail", "ai_repos_recent": 0, "total_repos": 1},
+      "github_public_org": {
+        "url": "https://github.com/alliancehospice",
+        "ai_repos_recent": 0,
+        "total_repos": 4
+      },
       "builtwith": []
     },
-    "koda-systems.example": {
+    "americraftmfg.com": {
       "open_roles_today": [
-        {"title": "Backend Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Frontend Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/koda-systems", "ai_repos_recent": 0, "total_repos": 3},
-      "builtwith": []
-    },
-    "glomar-fintech.example": {
-      "open_roles_today": [
-        {"title": "Senior Engineer", "posted_at": "2026-03-15", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-22", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 3,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/glomar", "ai_repos_recent": 0, "total_repos": 2},
-      "builtwith": []
-    },
-    "nimbus-post-layoff.example": {
-      "open_roles_today": [
-        {"title": "Kubernetes Platform Engineer", "posted_at": "2026-03-20", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Terraform Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 7,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/nimbus-cloud", "ai_repos_recent": 0, "total_repos": 6},
-      "builtwith": []
-    },
-    "bastion-retail.example": {
-      "open_roles_today": [
-        {"title": "Senior Data Engineer", "posted_at": "2026-01-20", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Senior Data Engineer", "posted_at": "2026-02-02", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Databricks Specialist (Healthcare)", "posted_at": "2026-01-15", "ai_adjacent": true, "source": "builtin"},
-        {"title": "ML Engineer (Retail AI)", "posted_at": "2026-02-10", "ai_adjacent": true, "source": "builtin"}
-      ],
-      "open_roles_60d_ago_count": 4,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Chief Data Officer", "name": "Sara Moradi", "url": "https://bastion-retail.example/team"}],
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/bastion-retail", "ai_repos_recent": 0, "total_repos": 5},
-      "builtwith": ["Databricks", "Snowflake"]
-    },
-    "strom-voltaic.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Frontend Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Data Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-15", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "QA Engineer", "posted_at": "2026-03-18", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/strom-voltaic", "ai_repos_recent": 0, "total_repos": 1},
-      "builtwith": []
-    },
-    "meridian-cloud.example": {
-      "open_roles_today": [
-        {"title": "Staff Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Principal Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "AI Infrastructure Engineer", "posted_at": "2026-03-10", "ai_adjacent": true, "source": "builtin"},
-        {"title": "MLOps Engineer", "posted_at": "2026-03-15", "ai_adjacent": true, "source": "builtin"}
-      ],
-      "open_roles_60d_ago_count": 30,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "VP AI", "name": "Lila Crane", "url": "https://meridian-cloud.example/team"}],
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/meridian-cloud", "ai_repos_recent": 3, "total_repos": 30},
-      "builtwith": ["Databricks", "Kubernetes", "Terraform"]
-    },
-    "dewfall-analytics.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-15", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Data Engineer", "posted_at": "2026-02-25", "ai_adjacent": false, "source": "builtin"},
-        {"title": "ML Engineer", "posted_at": "2026-02-18", "ai_adjacent": true, "source": "builtin"},
-        {"title": "ML Engineer", "posted_at": "2026-03-02", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Applied Scientist", "posted_at": "2026-03-08", "ai_adjacent": true, "source": "linkedin_public"},
-        {"title": "Data Platform Engineer", "posted_at": "2026-03-12", "ai_adjacent": true, "source": "builtin"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Head of AI", "name": "Camille Ortega", "url": "https://dewfall-analytics.example/team"}],
-      "exec_commentary_last_12m": [
-        {"title": "Our LLM Roadmap for 2026", "url": "https://dewfall-analytics.example/blog/llm-2026", "date": "2026-02-02"}
-      ],
-      "github_public_org": {"url": "https://github.com/dewfall", "ai_repos_recent": 4, "total_repos": 9},
-      "builtwith": ["Databricks", "dbt"]
-    },
-    "quillrock-adtech.example": {
-      "open_roles_today": [
-        {"title": "Staff ML Engineer", "posted_at": "2026-01-20", "ai_adjacent": true, "source": "builtin"},
-        {"title": "MLOps Engineer", "posted_at": "2026-02-15", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Data Platform Engineer", "posted_at": "2026-02-10", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Senior Go Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Head of AI", "name": "Ari Bloom", "url": "https://quillrock-adtech.example/team"}],
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/quillrock", "ai_repos_recent": 1, "total_repos": 7},
-      "builtwith": ["Databricks"]
-    },
-    "sturgeon-data.example": {
-      "open_roles_today": [
-        {"title": "Python Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Product Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Full-stack Engineer", "posted_at": "2026-03-18", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Data Engineer", "posted_at": "2026-03-22", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Frontend Engineer", "posted_at": "2026-03-25", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "QA Engineer", "posted_at": "2026-04-01", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/sturgeon-data", "ai_repos_recent": 0, "total_repos": 1},
-      "builtwith": []
-    },
-    "holt-fitness.example": {
-      "open_roles_today": [
-        {"title": "NestJS Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Senior Data Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "AI Product Manager", "posted_at": "2026-03-12", "ai_adjacent": true, "source": "linkedin_public"},
-        {"title": "ML Engineer (Recommendations)", "posted_at": "2026-03-20", "ai_adjacent": true, "source": "builtin"}
-      ],
-      "open_roles_60d_ago_count": 3,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/holt-fitness", "ai_repos_recent": 0, "total_repos": 4},
-      "builtwith": ["Twilio"]
-    },
-    "flint-payments.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-10", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Data Engineer", "posted_at": "2026-02-15", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Senior Data Engineer", "posted_at": "2026-02-20", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "ML Engineer (Fraud)", "posted_at": "2026-02-25", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 3,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "VP Data", "name": "Talia Benayoun", "url": "https://flint-payments.example/team"}],
-      "exec_commentary_last_12m": [
-        {"title": "ML in the Fraud Stack", "url": "https://flint-payments.example/blog/fraud-ml", "date": "2025-12-10"}
-      ],
-      "github_public_org": {"url": "https://github.com/flint-payments", "ai_repos_recent": 1, "total_repos": 4},
-      "builtwith": ["dbt", "Snowflake"]
-    },
-    "pharos-fintech.example": {
-      "open_roles_today": [
-        {"title": "Staff Backend Engineer", "posted_at": "2026-03-25", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Senior Data Engineer", "posted_at": "2026-03-28", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "ML Engineer", "posted_at": "2026-04-01", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Platform Engineer (Go)", "posted_at": "2026-04-02", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 4,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/pharos-fintech", "ai_repos_recent": 0, "total_repos": 5},
-      "builtwith": []
-    },
-    "silo-contracts.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-20", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-02", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Full-stack Engineer", "posted_at": "2026-03-18", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Data Engineer", "posted_at": "2026-03-22", "ai_adjacent": false, "source": "wellfound"},
-        {"title": "Product Engineer", "posted_at": "2026-03-25", "ai_adjacent": false, "source": "wellfound"}
-      ],
-      "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/silo-contracts", "ai_repos_recent": 0, "total_repos": 1},
-      "builtwith": []
-    },
-    "beacon-direct.example": {
-      "open_roles_today": [
-        {"title": "Python Engineer", "posted_at": "2026-03-05", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Go Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Platform Engineer", "posted_at": "2026-03-15", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-22", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Senior Engineer", "posted_at": "2026-03-28", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Product Engineer", "posted_at": "2026-04-01", "ai_adjacent": false, "source": "linkedin_public"}
-      ],
-      "open_roles_60d_ago_count": 1,
-      "ai_ml_leadership_named": false,
-      "exec_commentary_last_12m": [],
-      "github_public_org": {"url": "https://github.com/beacon-direct", "ai_repos_recent": 0, "total_repos": 1},
-      "builtwith": []
-    },
-    "lamina-health.example": {
-      "open_roles_today": [
-        {"title": "Senior Python Engineer", "posted_at": "2026-03-01", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Backend Engineer", "posted_at": "2026-03-10", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "ML Engineer (Clinical)", "posted_at": "2026-03-15", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Data Engineer", "posted_at": "2026-03-20", "ai_adjacent": false, "source": "linkedin_public"}
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-01-29",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-02-20",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-02-28",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "AI Product Manager",
+          "posted_at": "2026-01-29",
+          "ai_adjacent": true,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-02-19",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-03-09",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-01-21",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
       ],
       "open_roles_60d_ago_count": 6,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Head of AI", "name": "Priya Desai", "url": "https://lamina-health.example/team"}],
-      "exec_commentary_last_12m": [
-        {"title": "Responsible AI in Clinical Workflows", "url": "https://lamina-health.example/blog/responsible-ai", "date": "2025-11-20"}
-      ],
-      "github_public_org": {"url": "https://github.com/lamina-health", "ai_repos_recent": 2, "total_repos": 5},
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/americraftmfg",
+        "ai_repos_recent": 0,
+        "total_repos": 4
+      },
       "builtwith": []
     },
-    "crescent-ai.example": {
+    "fivestarcarting.com": {
       "open_roles_today": [
-        {"title": "Applied Scientist (Foundation Models)", "posted_at": "2026-01-20", "ai_adjacent": true, "source": "builtin"},
-        {"title": "ML Platform Engineer", "posted_at": "2026-01-25", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Applied Scientist", "posted_at": "2026-02-10", "ai_adjacent": true, "source": "builtin"},
-        {"title": "Senior Python Engineer", "posted_at": "2026-02-20", "ai_adjacent": false, "source": "linkedin_public"},
-        {"title": "Agent Systems Engineer", "posted_at": "2026-03-01", "ai_adjacent": true, "source": "builtin"}
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-02-22",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-02-08",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-02-15",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-01-13",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-02-17",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 3,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/fivestarcarting",
+        "ai_repos_recent": 0,
+        "total_repos": 10
+      },
+      "builtwith": []
+    },
+    "comax.coop": {
+      "open_roles_today": [
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-02-10",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-03-08",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-02-18",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Senior Python Engineer",
+          "posted_at": "2026-01-15",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-02-25",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-02-08",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-03-07",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-02-11",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-02-13",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-02-02",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-01-03",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-03-22",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-01-07",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-01-25",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 13,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/comax",
+        "ai_repos_recent": 0,
+        "total_repos": 4
+      },
+      "builtwith": []
+    },
+    "windowclassics.com": {
+      "open_roles_today": [
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-03-01",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Computer Vision Engineer",
+          "posted_at": "2026-01-02",
+          "ai_adjacent": true,
+          "source": "builtin"
+        },
+        {
+          "title": "AI Platform Engineer",
+          "posted_at": "2026-02-11",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-03-19",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-01-03",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-01-01",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        }
+      ],
+      "open_roles_60d_ago_count": 4,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/windowclassics",
+        "ai_repos_recent": 0,
+        "total_repos": 4
+      },
+      "builtwith": []
+    },
+    "wiringtech.com": {
+      "open_roles_today": [
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-03-22",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-02-28",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Python Engineer",
+          "posted_at": "2026-01-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-01-23",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-01-14",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-01-25",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-01-17",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 4,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/wiringtech",
+        "ai_repos_recent": 0,
+        "total_repos": 9
+      },
+      "builtwith": []
+    },
+    "ameriskengineering.com": {
+      "open_roles_today": [
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-02-19",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-01-15",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-01-25",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-02-16",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-03-12",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 4,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/ameriskengineering",
+        "ai_repos_recent": 0,
+        "total_repos": 3
+      },
+      "builtwith": []
+    },
+    "hang.de": {
+      "open_roles_today": [
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-01-28",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-01-28",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-02-01",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        }
+      ],
+      "open_roles_60d_ago_count": 1,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/hang",
+        "ai_repos_recent": 0,
+        "total_repos": 1
+      },
+      "builtwith": []
+    },
+    "cius.co.uk": {
+      "open_roles_today": [
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-02-01",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-01-12",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-02-22",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Python Engineer",
+          "posted_at": "2026-02-01",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-01-30",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-03-06",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Analytics Engineer",
+          "posted_at": "2026-01-31",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Python Engineer",
+          "posted_at": "2026-03-12",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-01-22",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 5,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/cius",
+        "ai_repos_recent": 0,
+        "total_repos": 1
+      },
+      "builtwith": []
+    },
+    "alphaballscrew.com": {
+      "open_roles_today": [
+        {
+          "title": "SRE",
+          "posted_at": "2026-02-02",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-01-28",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-03-20",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "SRE",
+          "posted_at": "2026-02-22",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        }
       ],
       "open_roles_60d_ago_count": 2,
-      "ai_ml_leadership_named": true,
-      "ai_ml_leaders": [{"title": "Head of AI", "name": "Tobias Meier", "url": "https://crescent-ai.example/team"}],
-      "exec_commentary_last_12m": [
-        {"title": "Agentic AI 2026", "url": "https://crescent-ai.example/blog/agentic-2026", "date": "2026-01-10"}
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/alphaballscrew",
+        "ai_repos_recent": 0,
+        "total_repos": 2
+      },
+      "builtwith": []
+    },
+    "alpine-collision.com": {
+      "open_roles_today": [
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-03-20",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-01-21",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-01-22",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "SRE",
+          "posted_at": "2026-03-01",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-03-08",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-01-07",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-02-02",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
       ],
-      "github_public_org": {"url": "https://github.com/crescent-ai", "ai_repos_recent": 6, "total_repos": 12},
-      "builtwith": ["Databricks", "Weights and Biases", "vLLM"]
+      "open_roles_60d_ago_count": 6,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/alpine-collision",
+        "ai_repos_recent": 0,
+        "total_repos": 4
+      },
+      "builtwith": []
+    },
+    "connecttv.se": {
+      "open_roles_today": [
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-01-05",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-03-17",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 1,
+      "ai_ml_leadership_named": true,
+      "exec_commentary_last_12m": [
+        {
+          "title": "Agentic Systems as Strategy",
+          "url": "https://connecttv.se/blog/ai-strategy",
+          "date": "2026-02-23"
+        }
+      ],
+      "github_public_org": {
+        "url": "https://github.com/connecttv",
+        "ai_repos_recent": 3,
+        "total_repos": 5
+      },
+      "builtwith": [],
+      "ai_ml_leaders": [
+        {
+          "title": "Chief Scientist",
+          "name": "Isabel Lindqvist",
+          "url": "https://connecttv.se/team"
+        }
+      ]
+    },
+    "tuffgirl.com": {
+      "open_roles_today": [
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-03-03",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-02-16",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-01-20",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-01-06",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-03-11",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 3,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/tuffgirl",
+        "ai_repos_recent": 0,
+        "total_repos": 8
+      },
+      "builtwith": []
+    },
+    "riverpointpgh.com": {
+      "open_roles_today": [
+        {
+          "title": "SRE",
+          "posted_at": "2026-03-19",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-01-19",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-02-07",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 1,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/riverpointpgh",
+        "ai_repos_recent": 0,
+        "total_repos": 10
+      },
+      "builtwith": []
+    },
+    "cavendishfoods.co.uk": {
+      "open_roles_today": [
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-03-12",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-01-10",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-01-19",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-02-13",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-02-11",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-01-11",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-01-11",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 5,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/cavendishfoods",
+        "ai_repos_recent": 0,
+        "total_repos": 6
+      },
+      "builtwith": []
+    },
+    "syma-tech.de": {
+      "open_roles_today": [
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-02-26",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "DevOps Engineer",
+          "posted_at": "2026-02-27",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Data Engineer",
+          "posted_at": "2026-02-15",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-01-14",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-02-26",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-02-12",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Frontend Engineer",
+          "posted_at": "2026-02-15",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 5,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/syma-tech",
+        "ai_repos_recent": 0,
+        "total_repos": 1
+      },
+      "builtwith": []
+    },
+    "sycamorehillcapital.com": {
+      "open_roles_today": [
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-01-19",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-02-14",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "SRE",
+          "posted_at": "2026-02-27",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Staff Engineer",
+          "posted_at": "2026-01-20",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Engineering Manager",
+          "posted_at": "2026-01-19",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-03-16",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-02-12",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-01-10",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Product Engineer",
+          "posted_at": "2026-01-02",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 6,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/sycamorehillcapital",
+        "ai_repos_recent": 0,
+        "total_repos": 9
+      },
+      "builtwith": []
+    },
+    "conseil-telecom.net": {
+      "open_roles_today": [
+        {
+          "title": "QA Engineer",
+          "posted_at": "2026-01-27",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Python Engineer",
+          "posted_at": "2026-01-03",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "AI Platform Engineer",
+          "posted_at": "2026-01-01",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-03-02",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-03-02",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        }
+      ],
+      "open_roles_60d_ago_count": 3,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/conseil-telecom",
+        "ai_repos_recent": 0,
+        "total_repos": 7
+      },
+      "builtwith": []
+    },
+    "c-i-ltd.co.uk": {
+      "open_roles_today": [
+        {
+          "title": "Senior Backend Engineer",
+          "posted_at": "2026-02-14",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Backend Engineer",
+          "posted_at": "2026-02-21",
+          "ai_adjacent": false,
+          "source": "builtin"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-01-06",
+          "ai_adjacent": false,
+          "source": "linkedin_public"
+        },
+        {
+          "title": "Full-stack Engineer",
+          "posted_at": "2026-01-27",
+          "ai_adjacent": false,
+          "source": "wellfound"
+        },
+        {
+          "title": "Senior Go Engineer",
+          "posted_at": "2026-03-03",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 3,
+      "ai_ml_leadership_named": false,
+      "exec_commentary_last_12m": [],
+      "github_public_org": {
+        "url": "https://github.com/c-i-ltd",
+        "ai_repos_recent": 0,
+        "total_repos": 3
+      },
+      "builtwith": []
+    },
+    "americanmetalroofs.com": {
+      "open_roles_today": [
+        {
+          "title": "MLOps Engineer",
+          "posted_at": "2026-01-25",
+          "ai_adjacent": true,
+          "source": "wellfound"
+        },
+        {
+          "title": "Platform Engineer",
+          "posted_at": "2026-01-30",
+          "ai_adjacent": false,
+          "source": "builtin"
+        }
+      ],
+      "open_roles_60d_ago_count": 1,
+      "ai_ml_leadership_named": true,
+      "exec_commentary_last_12m": [
+        {
+          "title": "ML in Production",
+          "url": "https://americanmetalroofs.com/blog/agentic-2026",
+          "date": "2026-02-11"
+        }
+      ],
+      "github_public_org": {
+        "url": "https://github.com/americanmetalroofs",
+        "ai_repos_recent": 2,
+        "total_repos": 3
+      },
+      "builtwith": [],
+      "ai_ml_leaders": [
+        {
+          "title": "VP Data",
+          "name": "Hans Lindqvist",
+          "url": "https://americanmetalroofs.com/team"
+        }
+      ]
     }
   }
 }
