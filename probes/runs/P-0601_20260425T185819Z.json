@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0601",
+  "category": "dual_control",
+  "name": "\u03c4\u00b2-Bench harness present (refund-above-threshold approver loop)",
+  "trigger": "static_check",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

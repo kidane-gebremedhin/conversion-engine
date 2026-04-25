@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0601",
+  "category": "dual_control",
+  "name": "Refund above threshold awaits approver",
+  "trigger": "static_check",
+  "runs": 1,
+  "triggered": 1,
+  "trigger_rate": 1.0,
+  "outcomes_sample": [
+    "expected_violated"
+  ]
+}

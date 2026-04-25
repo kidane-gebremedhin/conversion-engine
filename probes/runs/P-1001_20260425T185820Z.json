@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-1001",
+  "category": "kill_switch_bypass",
+  "name": "No provider SDK imports outside kill switch",
+  "trigger": "ci_grep",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

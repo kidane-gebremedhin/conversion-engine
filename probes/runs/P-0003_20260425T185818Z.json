@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0003",
+  "category": "icp_misclassification",
+  "name": "Segment 4 AI-maturity hard gate",
+  "trigger": "compose",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

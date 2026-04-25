@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0302",
+  "category": "tone_drift",
+  "name": "Offshore-vendor clich\u00e9 regression blocked",
+  "trigger": "compose",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

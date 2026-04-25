@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0602",
+  "category": "dual_control",
+  "name": "Inventory-then-shipping ordering",
+  "trigger": "static_check",
+  "runs": 1,
+  "triggered": 1,
+  "trigger_rate": 1.0,
+  "outcomes_sample": [
+    "expected_violated"
+  ]
+}

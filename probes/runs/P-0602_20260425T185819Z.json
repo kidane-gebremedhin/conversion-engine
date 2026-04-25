@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0602",
+  "category": "dual_control",
+  "name": "\u03c4\u00b2-Bench dev slice present (inventory-then-shipping ordering)",
+  "trigger": "static_check",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

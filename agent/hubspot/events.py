@@ -42,7 +42,7 @@ def _to_hubspot_datetime(value: Any) -> int:
 
 
 def upsert_contact(prospect: dict[str, Any], *, brief: Any, classification: Any, trace_id: str, kill_switch_sink: bool) -> str:
-    b = brief.model_dump() if hasattr(brief, "model_dump") else brief
+    b = brief.model_dump(mode="json") if hasattr(brief, "model_dump") else brief
     properties: dict[str, Any] = {
         "email": prospect["prospect_email"],
         "firstname": str(prospect.get("prospect_name", "")).split(" ", 1)[0],

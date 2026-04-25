@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0502",
+  "category": "cost_pathology",
+  "name": "Cost-per-qualified-lead budget enforced",
+  "trigger": "cost_budget",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

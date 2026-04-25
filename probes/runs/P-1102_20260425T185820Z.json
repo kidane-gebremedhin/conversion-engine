@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-1102",
+  "category": "brand_voice",
+  "name": "\"Andela case study?\" \u2014 admits no, redirects honestly",
+  "trigger": "static_check",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

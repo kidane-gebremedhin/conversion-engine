@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0801",
+  "category": "signal_reliability",
+  "name": "Crunchbase-only firmographic \u2014 weak hiring signal",
+  "trigger": "classify",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

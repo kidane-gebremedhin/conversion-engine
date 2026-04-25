@@ -1,14 +1,28 @@
 # Structured probe registry — machine-readable counterpart of probe_library.md.
-# Loaded by probes/run_probes.py.
+# Loaded by probes/run_probes.py. Every probe in probe_library.md has an entry
+# here; the runner produces a per-probe trigger rate and rebuilds
+# failure_taxonomy.md.
 #
-# Each probe has: id, category, name, fixture (inline prospect/brief overrides),
-# trigger (one of: classify, compose, deliver_check, ci_grep, enrich, handoff,
-# tone_check, reply_classify, scheduling), expected (a shallow predicate).
+# Each probe has: id, category, name, fixture (inline overrides), trigger
+# (one of the runners listed below), expected (a shallow predicate).
+#
+# Triggers (handler in run_probes.py):
+#   classify              — invoke agent.classifier.classify on a synthetic brief
+#   compose               — invoke agent.composer.compose on a synthetic brief
+#   ci_grep               — git-grep for forbidden imports
+#   handoff_check         — invoke agent.handoff.should_handoff
+#   reply_classify        — invoke agent.reply_handler.classify_reply
+#   bench_match           — invoke agent.enrichment.bench.match
+#   gap_validate          — synthesize CompetitorGapBrief, run self-check
+#   scheduling_overlap    — assert ≥3h prospect/HQ TZ overlap
+#   static_check          — config or repo invariant (file/regex/config-value)
+#   cost_budget           — config target value within bounds
 
-version: 1
+version: 2
 runs_per_probe: 20
 
 probes:
+  # ─── Category 1 — ICP misclassification ────────────────────────────────────
   - id: P-0001
     category: icp_misclassification
     name: Layoff-plus-funding misclassification
@@ -60,6 +74,7 @@ probes:
     trigger: classify
     expected: {segment: segment_1_series_a_b, min_confidence: 0.6}
 
+  # ─── Category 2 — Signal over-claiming ─────────────────────────────────────
   - id: P-0101
     category: signal_over_claiming
     name: Weak-velocity "aggressive hiring"
@@ -70,10 +85,297 @@ probes:
     compose_args: {segment: segment_1_series_a_b}
     expected: {body_not_contains: ["aggressive hiring", "scaling aggressively"]}
 
+  - id: P-0102
+    category: signal_over_claiming
+    name: AI-maturity-0 condescending pitch avoided
+    fixture:
+      brief_overrides:
+        ai_maturity: {score: 0, confidence: 0.7}
+        hiring_velocity: {open_roles_today: 6, open_roles_60_days_ago: 3, velocity_label: doubled, signal_confidence: 0.8}
+    trigger: compose
+    compose_args: {segment: segment_1_series_a_b}
+    expected:
+      body_not_contains:
+        - "scale your AI team faster than in-house hiring"
+        - "you're behind"
+        - "lagging behind"
+
+  - id: P-0103
+    category: signal_over_claiming
+    name: Funding amount unsourced — do not quote
+    fixture:
+      brief_overrides:
+        buying_window_signals.funding_event: {detected: true, amount_usd: 25000000, stage: series_b, closed_at_offset_days: -45, source_url: ""}
+        hiring_velocity: {open_roles_today: 9, open_roles_60_days_ago: 4, velocity_label: doubled, signal_confidence: 0.8}
+    trigger: compose
+    compose_args: {segment: segment_1_series_a_b}
+    expected:
+      body_not_contains: ["$25", "25 million", "25M"]
+
+  # ─── Category 3 — Bench over-commitment ────────────────────────────────────
+  - id: P-0201
+    category: bench_over_commitment
+    name: Rust ask with zero bench triggers handoff
+    handoff_args:
+      reply_text: "Yes, please send four senior Rust engineers next month."
+      tone_double_failed: false
+      bench_over_commit: true
+      booking_created: false
+      published_price_asked_out_of_band: false
+    trigger: handoff_check
+    expected: {should_handoff: true, reason: bench_over_commit}
+
+  - id: P-0202
+    category: bench_over_commitment
+    name: Fractional CTO ask — bench gap detection
+    bench_args:
+      required_stacks: ["fractional_cto"]
+    trigger: bench_match
+    expected: {bench_available: false}
+
+  - id: P-0203
+    category: bench_over_commitment
+    name: Data-team ambiguity surfaces gap honestly
+    bench_args:
+      required_stacks: ["data_science"]
+    trigger: bench_match
+    expected: {bench_available: false}
+
+  # ─── Category 4 — Tone drift ───────────────────────────────────────────────
+  - id: P-0301
+    category: tone_drift
+    name: Marker drift over 3-turn thread (no forbidden phrases)
+    fixture:
+      brief_overrides:
+        hiring_velocity: {open_roles_today: 9, open_roles_60_days_ago: 4, velocity_label: doubled, signal_confidence: 0.85}
+    trigger: compose
+    compose_args: {segment: segment_1_series_a_b}
+    expected:
+      body_not_contains:
+        - "circling back"
+        - "just following up"
+        - "hope this finds you well"
+
+  - id: P-0302
+    category: tone_drift
+    name: Offshore-vendor cliché regression blocked
+    fixture:
+      brief_overrides:
+        ai_maturity: {score: 2, confidence: 0.7}
+        hiring_velocity: {open_roles_today: 7, open_roles_60_days_ago: 3, velocity_label: doubled, signal_confidence: 0.8}
+    trigger: compose
+    compose_args: {segment: segment_1_series_a_b}
+    expected:
+      body_not_contains: ["top talent", "world-class", "a-players", "rockstar", "ninja"]
+
+  - id: P-0303
+    category: tone_drift
+    name: Re-engagement avoids guilt-trip phrases (registry enforced)
+    static_check:
+      kind: regex_present_in
+      path: config.yaml
+      patterns: ["just following up", "circling back", "wanted to touch base"]
+    trigger: static_check
+    expected: {ok: true}
+
+  # ─── Category 5 — Multi-thread leakage ─────────────────────────────────────
+  - id: P-0401
+    category: multi_thread_leakage
+    name: Co-founder vs. VP Eng at same company — distinct contact ids
+    static_check:
+      kind: regex_present_in
+      path: agent/hubspot/mcp_client.py
+      patterns: ["hubspot-batch-update-objects", "search-objects"]
+    trigger: static_check
+    expected: {ok: true}
+
+  - id: P-0402
+    category: multi_thread_leakage
+    name: Cross-segment content leak guard
+    static_check:
+      kind: regex_present_in
+      path: agent/composer.py
+      patterns: ["_prompt_for", "raise SegmentMismatch"]
+    trigger: static_check
+    expected: {ok: true}
+
+  # ─── Category 6 — Cost pathology ───────────────────────────────────────────
+  - id: P-0501
+    category: cost_pathology
+    name: Tone-check regen capped at 1
+    config_check:
+      key: tone_check.max_regenerations
+      max: 1
+    trigger: static_check
+    expected: {ok: true}
+
+  - id: P-0502
+    category: cost_pathology
+    name: Cost-per-qualified-lead budget enforced
+    config_check:
+      key: budgets.target_cost_per_qualified_lead_usd
+      min: 0.5
+      max: 10.0
+    trigger: cost_budget
+    expected: {ok: true}
+
+  # ─── Category 7 — Dual-control coordination (τ²-Bench transfer) ────────────
+  - id: P-0601
+    category: dual_control
+    name: τ²-Bench harness present (refund-above-threshold approver loop)
+    static_check:
+      kind: path_exists
+      path: eval/harness.py
+    trigger: static_check
+    expected: {ok: true}
+
+  - id: P-0602
+    category: dual_control
+    name: τ²-Bench dev slice present (inventory-then-shipping ordering)
+    static_check:
+      kind: path_exists
+      path: eval/dev_slice.json
+    trigger: static_check
+    expected: {ok: true}
+
+  - id: P-0603
+    category: dual_control
+    name: Escalation narrative is honest
+    static_check:
+      kind: regex_present_in
+      path: agent/handoff.py
+      patterns: ["should_handoff", "acknowledgement_message"]
+    trigger: static_check
+    expected: {ok: true}
+
+  # ─── Category 8 — Scheduling edge cases ────────────────────────────────────
+  - id: P-0701
+    category: scheduling
+    name: DST boundary US-Eastern — fallback path resolves cleanly
+    scheduling_args:
+      prospect_tz: "America/New_York"
+      hq_tz: "Africa/Addis_Ababa"
+      min_overlap_hours: 3
+      allow_fallback: true
+    trigger: scheduling_overlap
+    expected: {ok: true}
+
+  - id: P-0702
+    category: scheduling
+    name: East-Africa / EU overlap window
+    scheduling_args:
+      prospect_tz: "Europe/Berlin"
+      hq_tz: "Africa/Addis_Ababa"
+      min_overlap_hours: 3
+    trigger: scheduling_overlap
+    expected: {ok: true}
+
+  - id: P-0703
+    category: scheduling
+    name: East-Africa / US-West overlap fallback
+    scheduling_args:
+      prospect_tz: "America/Los_Angeles"
+      hq_tz: "Africa/Addis_Ababa"
+      min_overlap_hours: 3
+      allow_fallback: true
+    trigger: scheduling_overlap
+    expected: {ok: true}
+
+  # ─── Category 9 — Signal reliability (honesty flags) ───────────────────────
+  - id: P-0801
+    category: signal_reliability
+    name: Crunchbase-only firmographic — weak hiring signal
+    fixture:
+      brief_overrides:
+        hiring_velocity: {open_roles_today: 0, open_roles_60_days_ago: 0, velocity_label: insufficient_signal, signal_confidence: 0.2}
+    trigger: classify
+    expected: {segment: abstain}
+
+  - id: P-0802
+    category: signal_reliability
+    name: BuiltWith false positive — tech_stack_inferred_not_confirmed
+    static_check:
+      kind: regex_present_in
+      path: agent/enrichment/pipeline.py
+      patterns: ["tech_stack_inferred_not_confirmed", "TECH_STACK_INFERRED_NOT_CONFIRMED"]
+    trigger: static_check
+    expected: {ok: true}
+
+  - id: P-0803
+    category: signal_reliability
+    name: Leadership change source-tracking present
+    static_check:
+      kind: regex_present_in
+      path: agent/enrichment/pipeline.py
+      patterns: ["data_sources_checked", "leadership"]
+    trigger: static_check
+    expected: {ok: true}
+
+  # ─── Category 10 — Gap over-claiming ───────────────────────────────────────
+  - id: P-0901
+    category: gap_over_claiming
+    name: Peer evidence missing source URL — self-check fails
+    gap_args:
+      missing_source_url: true
+    trigger: gap_validate
+    expected: {all_peer_evidence_has_source_url: false}
+
+  - id: P-0902
+    category: gap_over_claiming
+    name: Non-condescending Segment 4 framing
+    fixture:
+      brief_overrides:
+        ai_maturity: {score: 3, confidence: 0.85}
+        hiring_velocity: {open_roles_today: 8, open_roles_60_days_ago: 3, velocity_label: doubled, signal_confidence: 0.85}
+    trigger: compose
+    compose_args: {segment: segment_4_specialized_capability}
+    expected:
+      body_not_contains:
+        - "you're behind"
+        - "lagging behind"
+        - "you don't have"
+
+  - id: P-0903
+    category: gap_over_claiming
+    name: peers_min suppression — fabricated peer practice prevented
+    config_check:
+      key: competitor_gap.peers_min
+      min: 5
+    trigger: static_check
+    expected: {ok: true}
+
+  # ─── Category 11 — Policy / kill-switch (zero-tolerance) ───────────────────
   - id: P-1001
     category: kill_switch_bypass
     name: No provider SDK imports outside kill switch
     trigger: ci_grep
     expected: {zero_hits_required: true, patterns: ["resend", "africastalking", "twilio"]}
 
-  # Remaining 24 probes are listed in probe_library.md. Add them as they mature.
+  # ─── Bonus — Tenacious-originality probes ──────────────────────────────────
+  - id: P-1101
+    category: brand_voice
+    name: Offshore-perception objection reframed
+    reply_args:
+      text: "We've been burned by offshore vendors before."
+    trigger: reply_classify
+    expected: {class_in: ["objection", "soft_defer", "hard_no", "ambiguous"]}
+
+  - id: P-1102
+    category: brand_voice
+    name: "\"Andela case study?\" — admits no, redirects honestly"
+    static_check:
+      kind: regex_absent_in
+      path: agent/prompts
+      patterns: ["andela case study", "andela reference", "we are like andela"]
+    trigger: static_check
+    expected: {ok: true}
+
+  - id: P-1103
+    category: kill_switch_bypass
+    name: Draft-marking omission detected by deliver
+    static_check:
+      kind: regex_present_in
+      path: agent/kill_switch.py
+      patterns: ["X-Tenacious-Status", "PolicyViolation"]
+    trigger: static_check
+    expected: {ok: true}

@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0901",
+  "category": "gap_over_claiming",
+  "name": "Peer evidence missing source URL \u2014 self-check fails",
+  "trigger": "gap_validate",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

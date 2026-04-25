@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0701",
+  "category": "scheduling",
+  "name": "DST boundary US-Eastern \u2014 fallback path resolves cleanly",
+  "trigger": "scheduling_overlap",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

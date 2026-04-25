@@ -1,9 +1,27 @@
 # Probe Library — Act III
 
-Thirty-one adversarial probes diagnostic of Tenacious-specific failure modes.
+**34 adversarial probes** diagnostic of Tenacious-specific failure modes,
+spanning 12 categories. Every probe below has a structured entry in
+[`probes.yaml`](probes.yaml); the runner records a per-probe trigger rate
+and rebuilds [`failure_taxonomy.md`](failure_taxonomy.md) on every run.
+
 See [`../__specs/12-probe-library.md`](../__specs/12-probe-library.md) for the
-probe contract. Each probe below is the canonical structured entry; the
-YAML for the runner lives in `probes/probes.yaml`.
+probe contract.
+
+## Trigger handlers (in `run_probes.py`)
+
+| Trigger | What it exercises |
+|---|---|
+| `classify` | `agent.classifier.classify` on a synthetic brief |
+| `compose` | `agent.composer.compose` (LLM forced to stub for determinism) |
+| `ci_grep` | `git grep` for forbidden imports |
+| `handoff_check` | `agent.handoff.should_handoff` decision |
+| `reply_classify` | `agent.reply_handler.classify_reply` on fixture text |
+| `bench_match` | `agent.enrichment.bench.match` on required stacks |
+| `gap_validate` | Synthesize peer evidence, check `GapQualitySelfCheck` |
+| `scheduling_overlap` | TZ overlap calculator (≥3h or fallback) |
+| `static_check` | Repo invariant: `path_exists` / `regex_present_in` / `regex_absent_in` |
+| `cost_budget` | Config target value within bounds |
 
 ---
 

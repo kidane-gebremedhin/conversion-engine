@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0802",
+  "category": "signal_reliability",
+  "name": "BuiltWith false positive \u2014 tech_stack_inferred_not_confirmed",
+  "trigger": "static_check",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

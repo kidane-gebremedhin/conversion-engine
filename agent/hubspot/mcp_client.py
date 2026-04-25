@@ -41,6 +41,7 @@ import datetime as dt
 import json
 import os
 import re
+import time
 from typing import Any
 
 from agent.config import settings
@@ -48,6 +49,23 @@ from agent.config import settings
 
 class HubSpotMcpError(RuntimeError):
     """Raised when the MCP path is unavailable. Does not fall back."""
+
+
+_singleton: "HubSpotMcp | None" = None
+
+
+def get_mcp() -> "HubSpotMcp":
+    """Return the process-wide HubSpot MCP client.
+
+    The @hubspot/mcp-server is a stdio-bridged Node subprocess. Spawning two
+    of them in one Python process leads to EPIPE on shutdown when the
+    atexit hooks race each other's pipes. One subprocess per process is
+    sufficient, so all HubSpotClient instances share the same bridge.
+    """
+    global _singleton
+    if _singleton is None:
+        _singleton = HubSpotMcp()
+    return _singleton
 
 
 class HubSpotMcp:
@@ -157,7 +175,20 @@ class HubSpotMcp:
                     return first_text
             return parts
 
-        return self._loop.run_until_complete(_call())
+        # Retry transient transport errors (Node `fetch failed`, DNS hiccups,
+        # 502/503/504, socket resets). Logical HubSpot errors (validation,
+        # missing scopes, property-not-found) bubble up immediately.
+        last_err: HubSpotMcpError | None = None
+        for attempt in range(3):
+            try:
+                return self._loop.run_until_complete(_call())
+            except HubSpotMcpError as e:
+                if not _is_transient(str(e)) or attempt == 2:
+                    raise
+                last_err = e
+                time.sleep(0.6 * (2 ** attempt))
+        assert last_err is not None
+        raise last_err
 
     # ─── health + owner ────────────────────────────────────────────────
     def healthcheck(self) -> bool:
@@ -200,8 +231,13 @@ class HubSpotMcp:
         try:
             self.call("hubspot-get-property", {"objectType": object_type, "propertyName": name})
             return False
-        except HubSpotMcpError:
-            pass
+        except HubSpotMcpError as e:
+            # Only treat genuine "property not found" as missing. Anything
+            # else (transport hiccup, missing scope, validation) must
+            # surface — silently swallowing it leads to a misleading
+            # `hubspot-create-property` failure on the next line.
+            if not _looks_like_property_missing(str(e)):
+                raise
         payload: dict[str, Any] = {
             "objectType": object_type,
             "name": name,
@@ -350,6 +386,29 @@ def _extract_owner_id(info: Any) -> str | int | None:
 
 def _looks_like_hubspot_api_error(text: str) -> bool:
     return "HubSpot API Error:" in text or '"category":"VALIDATION_ERROR"' in text or '"category":"MISSING_SCOPES"' in text
+
+
+_TRANSIENT_MARKERS = (
+    "fetch failed", "econnreset", "etimedout", "enotfound", "eai_again",
+    "socket hang up", "network error", "request timeout",
+    "503 service", "502 bad gateway", "504 gateway", "429",
+)
+
+
+def _is_transient(text: str) -> bool:
+    low = text.lower()
+    return any(m in low for m in _TRANSIENT_MARKERS)
+
+
+def _looks_like_property_missing(text: str) -> bool:
+    low = text.lower()
+    return (
+        "property_doesnt_exist" in low
+        or "property does not exist" in low
+        or '"propertyname"' in low and "does not exist" in low
+        or "no property named" in low
+        or "404" in low and "property" in low
+    )
 
 
 def _friendly(tool_name: str, raw: str) -> str:

@@ -70,8 +70,11 @@ class HubSpotClient:
         self.base_url = settings.HUBSPOT_BASE_URL.rstrip("/")
         self._mcp: Any = None
         if self.token and settings.HUBSPOT_USE_MCP:
-            from agent.hubspot.mcp_client import HubSpotMcp
-            self._mcp = HubSpotMcp()     # raises on failure; no REST fallback
+            # Share one stdio-bridged @hubspot/mcp-server subprocess across
+            # every HubSpotClient instance in the process. Spawning two
+            # bridges races their atexit shutdowns and emits EPIPE.
+            from agent.hubspot.mcp_client import get_mcp
+            self._mcp = get_mcp()        # raises on failure; no REST fallback
             self.mode = "mcp"
         elif self.token:
             self.mode = "rest"

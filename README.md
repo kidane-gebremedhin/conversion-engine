@@ -226,6 +226,66 @@ State the pilot recommendation and the kill-switch clause (trigger metric, thres
 
 ---
 
+## Limitations & Handoff to Humans
+
+The system is engineered to know what it does *not* know. Five hard rails
+escalate a thread to a human before it can hurt the brand or the prospect:
+
+| Trigger | What happens | Where it's gated |
+|---|---|---|
+| Regulatory keyword in reply (MSA / DPA / BAA / SOW / NDA / DPIA / GDPR / HIPAA) | Hard handoff; agent stops sending. | [`agent/handoff.py`](agent/handoff.py) `should_handoff()` |
+| Pricing question outside published bands | Hard handoff. | same |
+| Bench over-commit (prospect asks for stack with bench count = 0) | Hard handoff; one acknowledgement, no warm draft. | same |
+| Tone-check double-fail | Soft handoff; logs to [`eval/runs/tone_flagged.jsonl`](eval/runs/). | [`agent/tone_check.py`](agent/tone_check.py) |
+| Discovery call booked | Soft handoff; context brief attached to HubSpot Deal as a NOTE. | [`agent/calendar/`](agent/calendar/) |
+
+On every handoff a HubSpot task is created (`HANDOFF — <company>: <reason>`)
+and the prospect receives a single acknowledgement email pointing them at the
+delivery lead.
+
+### Known limitations
+
+These are intentional non-goals for the challenge week, not defects:
+
+- **No autonomous high-stakes actions.** Pricing, contracts, and scoping are
+  human-only. The agent never quotes a number it cannot ground in
+  [`tenacious_sales_data/`](tenacious_sales_data/) or a public source.
+- **Public-data-only signals.** Crunchbase ODM (frozen), layoffs.fyi, ≤200
+  job posts/week (Playwright). No private data scraping, no LinkedIn
+  proprietary access, no purchased databases.
+- **English-only.** Tone markers, prompts, and reply classification are
+  English-only. Non-English replies route to handoff.
+- **Reply classifier abstains by default.** If `confidence < 0.70`, the
+  classifier returns `ambiguous` and the agent does not auto-respond. See
+  [`agent/reply_handler.py`](agent/reply_handler.py).
+- **Schedule overlap may force fallback.** When prospect TZ ↔ Tenacious HQ
+  (Africa/Addis_Ababa) working-hours overlap is < 3 h, the agent skips
+  SMS-based scheduling and offers the Cal.com link instead. Verified by
+  [`P-0701`–`P-0703`](probes/probe_library.md).
+- **τ²-Bench transfer is a baseline, not a deployment.** Dual-control
+  invariants are demonstrated against the harness in [`eval/`](eval/);
+  production retail/airline/telecom integration is out of scope.
+- **Stub-mode probes.** The probe library forces `LLM_STUB=1` to keep
+  trigger rates deterministic. Drift in real-LLM behavior is caught by
+  `make tau2-baseline` and the held-out tier, not by probes.
+
+### Adversarial coverage at a glance
+
+34 probes across 12 categories live in [`probes/probes.yaml`](probes/probes.yaml).
+Every probe has a runner; every runner re-builds
+[`probes/failure_taxonomy.md`](probes/failure_taxonomy.md) with a per-probe
+trigger rate. A non-zero rate is a regression signal.
+
+```bash
+make probes               # run the full library (≥34 probes × 20 runs)
+make probes P=P-0001      # run one probe
+```
+
+See [`probes/probe_library.md`](probes/probe_library.md) for the canonical
+documentation of each probe and the trigger handlers.
+
+---
+
 ## Non-Negotiables
 
 - Kill switch defaults unset.

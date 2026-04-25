@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0203",
+  "category": "bench_over_commitment",
+  "name": "Data-team ambiguity surfaces gap honestly",
+  "trigger": "bench_match",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

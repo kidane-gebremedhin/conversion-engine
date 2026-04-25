@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0402",
+  "category": "multi_thread_leakage",
+  "name": "Cross-segment content leak guard",
+  "trigger": "static_check",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

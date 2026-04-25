@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0101",
+  "category": "signal_over_claiming",
+  "name": "Weak-velocity \"aggressive hiring\"",
+  "trigger": "compose",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

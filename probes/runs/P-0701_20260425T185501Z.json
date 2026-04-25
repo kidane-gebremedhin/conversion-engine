@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0701",
+  "category": "scheduling",
+  "name": "DST boundary US-Eastern alignment",
+  "trigger": "scheduling_overlap",
+  "runs": 1,
+  "triggered": 1,
+  "trigger_rate": 1.0,
+  "outcomes_sample": [
+    "expected_violated"
+  ]
+}

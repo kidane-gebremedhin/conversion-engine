@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0703",
+  "category": "scheduling",
+  "name": "East-Africa / US-West overlap fallback",
+  "trigger": "scheduling_overlap",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

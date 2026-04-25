@@ -1,0 +1,13 @@
+{
+  "probe_id": "P-0902",
+  "category": "gap_over_claiming",
+  "name": "Non-condescending Segment 4 framing",
+  "trigger": "compose",
+  "runs": 1,
+  "triggered": 1,
+  "trigger_rate": 1.0,
+  "outcomes_sample": [
+    "exception:ModuleNotFoundError:No module named 'openai'",
+    "expected_violated"
+  ]
+}

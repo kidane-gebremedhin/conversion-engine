@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0501",
+  "category": "cost_pathology",
+  "name": "Tone-check regen capped at 1",
+  "trigger": "static_check",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

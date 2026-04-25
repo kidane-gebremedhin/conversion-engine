@@ -37,6 +37,8 @@ def stubbed_mcp_client(monkeypatch):
             return stub
 
     monkeypatch.setattr("agent.hubspot.mcp_client.HubSpotMcp", _FakeMcp)
+    # Reset the process-wide singleton so the fixture's stub is picked up.
+    monkeypatch.setattr("agent.hubspot.mcp_client._singleton", None)
 
     c = hubspot_client.HubSpotClient()
     return c, stub

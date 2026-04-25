@@ -57,6 +57,35 @@
       "reproduction_delta": 0.0,
       "reproduction_ci_overlaps_published": true,
       "n_tasks": 20
+    },
+    {
+      "run_id": "act1_baseline_20260425T191142Z_3a9499",
+      "partition": "retail_dev_30",
+      "model": "anthropic/claude-opus-4.7",
+      "tier": "dev",
+      "trials": 5,
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "pass_at_1_mean": 0.367,
+      "ci_95": [
+        0.32,
+        0.413
+      ],
+      "cost_total_usd": 0.0,
+      "cost_per_run_usd": 0.0,
+      "p50_latency_ms": 0,
+      "p95_latency_ms": 0,
+      "git_sha_repo": "248a9fd6e477f011a9794b8bce72de60d042e0b8",
+      "git_sha_tau2": "REPLACE_WITH_PINNED_COMMIT_SHA",
+      "published_reference_pass_at_1": 0.42,
+      "reproduction_delta": -0.053,
+      "reproduction_ci_overlaps_published": false,
+      "n_tasks": 30
     }
   ]
 }

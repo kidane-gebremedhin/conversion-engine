@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-1101",
+  "category": "brand_voice",
+  "name": "Offshore-perception objection reframed",
+  "trigger": "reply_classify",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}

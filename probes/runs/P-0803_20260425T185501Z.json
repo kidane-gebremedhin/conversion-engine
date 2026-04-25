@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0803",
+  "category": "signal_reliability",
+  "name": "Leadership change without press source \u2014 soften phrasing",
+  "trigger": "static_check",
+  "runs": 1,
+  "triggered": 1,
+  "trigger_rate": 1.0,
+  "outcomes_sample": [
+    "expected_violated"
+  ]
+}

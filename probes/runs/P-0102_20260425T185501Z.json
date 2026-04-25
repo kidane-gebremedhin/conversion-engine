@@ -1,0 +1,12 @@
+{
+  "probe_id": "P-0102",
+  "category": "signal_over_claiming",
+  "name": "AI-maturity-0 condescending pitch avoided",
+  "trigger": "compose",
+  "runs": 1,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met"
+  ]
+}
