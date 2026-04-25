@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from urllib.parse import parse_qs
 
 from fastapi import FastAPI, HTTPException, Request, Header
 
@@ -44,13 +45,25 @@ def health() -> dict[str, object]:
 @app.post("/webhook/email")
 async def webhook_email(
     request: Request,
-    x_resend_signature: str | None = Header(default=None),
+    svix_id: str | None = Header(default=None, alias="svix-id"),
+    svix_timestamp: str | None = Header(default=None, alias="svix-timestamp"),
+    svix_signature: str | None = Header(default=None, alias="svix-signature"),
 ) -> dict[str, object]:
+    print("email webhook callback")
     raw = await request.body()
-    if not email_webhook.verify_signature(raw, x_resend_signature or ""):
+    print(raw)
+    if not email_webhook.verify_signature(
+        raw, svix_id or "", svix_timestamp or "", svix_signature or ""
+    ):
         raise HTTPException(status_code=401, detail="signature verification failed")
     payload = json.loads(raw.decode("utf-8")) if raw else {}
     inbound = email_webhook.parse(payload)
+    # Resend posts outbound telemetry (email.sent, email.delivered, email.bounced,
+    # email.opened, ...) and inbound replies to the same webhook URL. Only inbound
+    # events carry a body; everything else is delivery telemetry we just ack.
+    event_type = str(payload.get("type") or "")
+    if not inbound.body_text:
+        return {"status": "noted", "type": event_type or "unknown"}
     trace = new_trace("reply.email", attributes={"prospect.email": inbound.from_address})
     with span("reply.classify", trace=trace) as s:
         cl = classify_reply(inbound.body_text)
@@ -75,18 +88,16 @@ async def webhook_email(
 
 @app.post("/webhook/sms")
 async def webhook_sms(request: Request) -> dict[str, object]:
-    print("Webhook callback")
+    print("SMS Callback")
     body = await request.body()
     print(body)
-    # Africa's Talking posts form-encoded; accept JSON too.
-    try:
-        data = json.loads(body.decode("utf-8") or "{}")
-        print(f"Callback received")
-    except json.JSONDecodeError as e:
-        print("Parse error", e)
-        from urllib.parse import parse_qs
+    # Africa's Talking posts form-encoded; JSON is accepted for test fixtures.
+    content_type = request.headers.get("content-type", "").lower()
+    if "application/x-www-form-urlencoded" in content_type:
         qs = parse_qs(body.decode("utf-8"))
         data = {k: v[0] for k, v in qs.items()}
+    else:
+        data = json.loads(body.decode("utf-8") or "{}") if body else {}
     inbound = sms_webhook.parse(data)
     intent = sms_webhook.classify_intent(inbound.body)
     trace = new_trace("reply.sms", attributes={"prospect.phone": inbound.from_number})
@@ -98,6 +109,8 @@ async def webhook_sms(request: Request) -> dict[str, object]:
         # escalate / opt-out / ambiguous
         return {"status": "handoff", "intent": intent, "trace_id": trace.trace_id}
     result = deliver("sms", inbound.from_number, payload)
+    print('resultresultresultresultresult')
+    print(result)
     return {"status": "replied", "intent": intent, "message_id": result.message_id, "trace_id": trace.trace_id}
 
 
@@ -111,7 +124,9 @@ async def webhook_cal(
     request: Request,
     x_cal_signature_256: str | None = Header(default=None),
 ) -> dict[str, object]:
+    print("Cal webhook callback")
     raw = await request.body()
+    print(raw)
     if not cal_webhook.verify_signature(raw, x_cal_signature_256 or ""):
         raise HTTPException(status_code=401, detail="signature verification failed")
     payload = json.loads(raw.decode("utf-8")) if raw else {}

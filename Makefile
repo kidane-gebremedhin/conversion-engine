@@ -89,7 +89,7 @@ lint:
 final-check: smoke test
 	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) scripts/final_check.py
 
-.PHONY: day0-hubspot day0-calcom day0-playwright
+.PHONY: day0-hubspot day0-calcom day0-playwright day0-email
 day0-hubspot:
 	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) scripts/hubspot_smoke.py
 
@@ -99,6 +99,9 @@ day0-calcom:
 day0-playwright:
 	@$(ACTIVATE) && playwright install chromium
 	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) -m agent.enrichment.jobposts_smoke
+
+day0-email:
+	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) scripts/email_smoke.py $(if $(TO),--to $(TO),)
 
 .PHONY: clean
 clean:
