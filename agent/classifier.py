@@ -77,8 +77,8 @@ def classify(brief: dict[str, Any] | Any) -> ClassificationResult:
     # ──────────────────────────────────────────────────────────────────────
 
     # Rule 1: layoff + funding → Segment 2
-    layoff_recent = layoff.get("detected") and layoff_days is not None and layoff_days <= int(s2.get("layoff_window_days", 120))
-    funding_recent = funding.get("detected") and funding_days is not None and funding_days <= int(s1.get("funding_window_days", 180))
+    layoff_recent = layoff.get("detected") and layoff_days is not None and layoff_days <= int(s2.get("layoff_window_days", 3650))
+    funding_recent = funding.get("detected") and funding_days is not None and funding_days <= int(s1.get("funding_window_days", 3650))
     if layoff_recent and funding_recent:
         pct = layoff.get("percentage_cut") or 0.0
         if pct > float(s2.get("disqualifier_layoff_pct_max", 0.40)):
@@ -94,7 +94,7 @@ def classify(brief: dict[str, Any] | Any) -> ClassificationResult:
             )
 
     # Rule 2: new CTO/VP Eng in last 90d → Segment 3
-    if leadership.get("detected") and leadership_days is not None and leadership_days <= int(s3.get("leadership_change_window_days", 90)):
+    if leadership.get("detected") and leadership_days is not None and leadership_days <= int(s3.get("leadership_change_window_days", 3650)):
         role = leadership.get("role")
         allowed_roles = s3.get("roles") or ["cto", "vp_engineering"]
         if role and str(role).lower() in [str(r).lower() for r in allowed_roles]:

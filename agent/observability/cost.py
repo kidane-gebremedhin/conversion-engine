@@ -13,8 +13,13 @@ def cost_usd(model_id: str, prompt_tokens: int, completion_tokens: int) -> float
 
     Unknown models cost zero and emit no warning — the caller is expected to
     surface unknowns via a missing-rate-card alert if it cares.
+
+    `config.get("a.b.c")` splits on `.`, but model ids like
+    `deepseek/deepseek-v3.2` contain dots that must not split. Look up the
+    `llm.rate_cards` dict whole and index it by the literal model id.
     """
-    card = config.get(f"llm.rate_cards.{model_id}", None)
+    rate_cards = config.get("llm.rate_cards", {}) or {}
+    card = rate_cards.get(model_id) if isinstance(rate_cards, dict) else None
     if not card:
         return 0.0
     inp = card.get("input_per_1m_usd", 0.0) if isinstance(card, dict) else card.input_per_1m_usd

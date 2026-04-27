@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0103",
+  "category": "signal_over_claiming",
+  "name": "Funding amount unsourced \u2014 do not quote",
+  "trigger": "compose",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

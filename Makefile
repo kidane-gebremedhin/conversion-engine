@@ -9,11 +9,13 @@ help:
 	@echo ""
 	@echo "  setup              Create venv, install deps, copy .env.example → .env, init config.yaml"
 	@echo "  smoke              Run infra/smoke_test.sh (kill-switch, sink, HubSpot, Cal.com, Langfuse)"
+	@echo "  ensure-data        Materialise data/ sources (crunchbase, jobposts, layoffs) if missing"
 	@echo "  enrich DOMAIN=x    Run the enrichment pipeline for one prospect domain"
 	@echo "  compose-and-send DOMAIN=x"
 	@echo "                     End-to-end one synthetic prospect (kill-switch enforced)"
 	@echo "  tau2-baseline      Reproduce the τ²-Bench retail baseline on the dev slice"
 	@echo "  tau2-eval          Run sealed held-out (eval-tier) — guarded by TAU2_SEALED_ACCESS=1 + EVAL_TIER_ENABLED=1"
+	@echo "  tau2-ablation      Run Act IV ablation (A_baseline + B_mechanism + C_ablation) → method/{ablation_results.json,held_out_traces.jsonl,stat_test.md}"
 	@echo "  probes             Execute the probe library against synthetic prospects"
 	@echo "  memo               Render memo.md → memo.pdf (strict 2-page check)"
 	@echo "  ack                Drop infra/acknowledgement_signed.txt with a UTC timestamp"
@@ -39,21 +41,59 @@ setup:
 smoke:
 	@bash infra/smoke_test.sh
 
+.PHONY: ensure-data
+ensure-data:
+	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) scripts/ensure_data.py
+
 .PHONY: enrich
-enrich:
+enrich: ensure-data
 	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) scripts/enrich.py --domain $(DOMAIN)
 
 .PHONY: compose-and-send
-compose-and-send:
+compose-and-send: ensure-data
 	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) scripts/compose_and_send.py --domain $(DOMAIN)
+
+# τ²-Bench harness — overridable knobs:
+#   make tau2-baseline                                 # defaults: retail_dev_30, 5 trials, dev tier
+#   make tau2-baseline TAU2_TRIALS=1                   # override one flag
+#   make tau2-baseline TAU2_PARTITION=retail_dev_30 TAU2_TRIALS=5 TAU2_TIER=dev
+#   make tau2-baseline TAU2_ARGS="--max-concurrency 8 --max-steps 50 --model qwen/qwen3-next-80b-a3b"
+TAU2_PARTITION ?= retail_dev_30
+TAU2_TRIALS    ?= 5
+TAU2_TIER      ?= dev
+TAU2_ARGS      ?=
 
 .PHONY: tau2-baseline
 tau2-baseline:
-	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) -m eval.harness --partition retail_dev_30 --trials 5 --tier dev
+	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) -m eval.harness --partition $(TAU2_PARTITION) --trials $(TAU2_TRIALS) --tier $(TAU2_TIER) $(TAU2_ARGS)
 
 .PHONY: tau2-eval
+tau2-eval: TAU2_PARTITION = retail_sealed_20
+tau2-eval: TAU2_TIER = eval
 tau2-eval:
-	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) -m eval.harness --partition retail_sealed_20 --trials 5 --tier eval
+	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) -m eval.harness --partition $(TAU2_PARTITION) --trials $(TAU2_TRIALS) --tier $(TAU2_TIER) $(TAU2_ARGS)
+
+# Act IV ablation — runs A_baseline + B_mechanism + C_ablation on the same
+# partition and writes method/{ablation_results.json, held_out_traces.jsonl,
+# stat_test.md}. Defaults to the dev partition + dev tier so iteration is
+# cheap; flip to sealed + eval when ready (and after setting the dual guard).
+#
+#   make tau2-ablation                                       # iterate cheaply
+#   make tau2-ablation TAU2_ABLATION_PARTITION=retail_sealed_20 TAU2_ABLATION_TIER=eval
+#   make tau2-ablation TAU2_ABLATION_ARGS="--trials 1 --max-concurrency 8"
+TAU2_ABLATION_PARTITION ?= retail_dev_30
+TAU2_ABLATION_TIER      ?= dev
+TAU2_ABLATION_TRIALS    ?= 5
+TAU2_ABLATION_ARGS      ?=
+
+.PHONY: tau2-ablation
+tau2-ablation:
+	@$(ACTIVATE) && PYTHONPATH=. $(PYTHON) -m method.run_ablations \
+	    --partition $(TAU2_ABLATION_PARTITION) \
+	    --trials $(TAU2_ABLATION_TRIALS) \
+	    --tier $(TAU2_ABLATION_TIER) \
+	    $(if $(filter retail_dev_30,$(TAU2_ABLATION_PARTITION)),--skip-guard,) \
+	    $(TAU2_ABLATION_ARGS)
 
 .PHONY: probes
 probes:

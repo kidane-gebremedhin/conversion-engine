@@ -50,7 +50,7 @@ A `config.example.yaml` ships with placeholder values and extensive comments. Sa
 
 ### 5. LLM model IDs (env — different per account/provider)
 
-- `DEV_LLM_MODEL` — e.g., `qwen/qwen3-next-80b-a3b` or `deepseek/deepseek-v3.2`.
+- `DEV_LLM_MODEL` — e.g., `qwen/qwen3-next-80b-a3b-instruct` or `deepseek/deepseek-v3.2`.
 - `EVAL_LLM_MODEL` — e.g., `anthropic/claude-sonnet-4.6` or `openai/gpt-5`.
 - `TONE_CHECK_MODEL` — may be a cheaper model for the second-pass tone check.
 - `REPLY_CLASSIFIER_MODEL` — may differ from composer.

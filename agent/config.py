@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     # LLM providers
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    DEV_LLM_MODEL: str = "qwen/qwen3-next-80b-a3b"
+    DEV_LLM_MODEL: str = "qwen/qwen3-next-80b-a3b-instruct"
     # Comma-separated OpenRouter slugs, tried in order if the primary fails
     # (rate limit / 5xx / timeout). Single API call — OpenRouter handles the
     # fallback transparently.

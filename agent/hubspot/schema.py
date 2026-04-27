@@ -48,14 +48,44 @@ DEAL_PROPERTIES: list[dict[str, Any]] = [
     {"name": "tenacious_evidence_graph_id", "type": "string"},
 ]
 
+# Email engagements (HubSpot object type "emails") — written by
+# events.record_outbound and events.record_inbound.
+EMAIL_PROPERTIES: list[dict[str, Any]] = [
+    {"name": "tenacious_trace_id", "type": "string"},
+    {"name": "tenacious_provider_message_id", "type": "string"},
+    {"name": "tenacious_tone_scores", "type": "string"},
+    {"name": "tenacious_draft_flag", "type": "string"},
+    {"name": "tenacious_reply_class", "type": "string"},
+    {"name": "tenacious_reply_confidence", "type": "number"},
+    {"name": "tenacious_reply_rationale", "type": "string"},
+]
+
+# Meeting engagements (object type "meetings") — written by events.record_booking.
+MEETING_PROPERTIES: list[dict[str, Any]] = [
+    {"name": "tenacious_cal_booking_id", "type": "string"},
+]
+
+# Task engagements (object type "tasks") — written by events.create_handoff_task.
+# Tasks go through the legacy create-engagement API but the modern object type
+# is `tasks`; properties created here apply to the v3 object representation.
+TASK_PROPERTIES: list[dict[str, Any]] = [
+    {"name": "tenacious_trace_id", "type": "string"},
+    {"name": "tenacious_handoff_reason", "type": "string"},
+]
+
 
 def ensure_all(client: Any) -> list[str]:
     """Create any missing tenacious_* property. Returns list of created names."""
     created: list[str] = []
-    for prop in CONTACT_PROPERTIES:
-        if client.ensure_contact_property(**prop):
-            created.append(prop["name"])
-    for prop in DEAL_PROPERTIES:
-        if client.ensure_deal_property(**prop):
-            created.append(prop["name"])
+    plan: list[tuple[str, list[dict[str, Any]]]] = [
+        ("contacts", CONTACT_PROPERTIES),
+        ("deals", DEAL_PROPERTIES),
+        ("emails", EMAIL_PROPERTIES),
+        ("meetings", MEETING_PROPERTIES),
+        ("tasks", TASK_PROPERTIES),
+    ]
+    for object_type, props in plan:
+        for prop in props:
+            if client.ensure_property(object_type, **prop):
+                created.append(f"{object_type}.{prop['name']}")
     return created

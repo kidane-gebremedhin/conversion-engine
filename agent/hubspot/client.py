@@ -103,6 +103,26 @@ class HubSpotClient:
         return {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
 
     # ─── properties ────────────────────────────────────────────────────
+    # HubSpot property `groupName` per object type. Engagement object types
+    # (`emails`, `tasks`, `meetings`) accept the synthetic group name
+    # `<object>information`, which HubSpot creates on first write.
+    _GROUP_BY_OBJECT = {
+        "contacts": "contactinformation",
+        "deals": "dealinformation",
+        "emails": "emailinformation",
+        "tasks": "taskinformation",
+        "meetings": "meetinginformation",
+    }
+
+    def ensure_property(self, object_type: str, *, name: str, type: str, options: list[str] | None = None) -> bool:
+        """Create a custom property on `object_type` if it does not exist.
+
+        Supported object types: `contacts`, `deals`, `emails`, `tasks`,
+        `meetings`. Returns True iff a new property was created.
+        """
+        return self._ensure_property(object_type, name=name, type=type, options=options)
+
+    # Back-compat helpers — older callers reach for these directly.
     def ensure_contact_property(self, *, name: str, type: str, options: list[str] | None = None) -> bool:
         return self._ensure_property("contacts", name=name, type=type, options=options)
 
@@ -111,9 +131,7 @@ class HubSpotClient:
 
     def _ensure_property(self, object_type: str, *, name: str, type: str, options: list[str] | None) -> bool:
         if self.mode == "mcp":
-            if object_type == "contacts":
-                return self._mcp.ensure_contact_property(name=name, type=type, options=options)
-            return self._mcp.ensure_deal_property(name=name, type=type, options=options)
+            return self._mcp.ensure_property(object_type, name=name, type=type, options=options)
         if self.mode == "local":
             path = self._local_dir / f"schema_{object_type}.json"
             existing = self._read_json(path, default=[])
@@ -132,9 +150,10 @@ class HubSpotClient:
         if r.status_code == 200:
             return False
         body: dict[str, Any] = {
-            "name": name, "label": name, "type": "number" if type == "number" else ("datetime" if type == "datetime" else "string"),
+            "name": name, "label": name,
+            "type": "number" if type == "number" else ("datetime" if type == "datetime" else "string"),
             "fieldType": "text" if type == "string" else ("number" if type == "number" else "date"),
-            "groupName": "contactinformation" if object_type == "contacts" else "dealinformation",
+            "groupName": self._GROUP_BY_OBJECT.get(object_type, f"{object_type}information"),
         }
         if type == "enumeration" and options:
             body["type"] = "enumeration"

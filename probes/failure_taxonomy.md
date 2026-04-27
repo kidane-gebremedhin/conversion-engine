@@ -1,6 +1,6 @@
 # Failure taxonomy
 
-Generated: 2026-04-25T18:58:20.761374+00:00
+Generated: 2026-04-28T10:35:28.742672+00:00
 Total probes: **34** · Clean (trigger_rate=0): **34** · Firing: **0**
 
 Probes are grouped by category. A probe whose `trigger_rate` is non-zero indicates the system regressed against the invariant the probe encodes — investigate the linked subsystem before merging.

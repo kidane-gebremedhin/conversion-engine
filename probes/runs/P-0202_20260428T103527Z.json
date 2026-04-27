@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0202",
+  "category": "bench_over_commitment",
+  "name": "Fractional CTO ask \u2014 bench gap detection",
+  "trigger": "bench_match",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

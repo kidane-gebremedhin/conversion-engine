@@ -1,0 +1,185 @@
+{
+  "prospect_domain": "culcha.com",
+  "prospect_sector": "Corporate Training",
+  "generated_at": "2026-04-28T13:59:18.720916Z",
+  "prospect_ai_maturity_score": 2,
+  "sector_top_quartile_benchmark": 2.0,
+  "competitors_analyzed": [
+    {
+      "name": "Yellow.ai",
+      "domain": "yellow.ai",
+      "ai_maturity_score": 2,
+      "ai_maturity_justification": [
+        "10 of 38 open engineering roles (26%) are AI-adjacent.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 1 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "500_to_2000",
+      "top_quartile": true,
+      "sources_checked": [
+        "https://github.com/yellow"
+      ]
+    },
+    {
+      "name": "The New England Conservatory of Music",
+      "domain": "necmusic.edu",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "No AI-adjacent roles among current openings.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 5 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "unknown",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/necmusic"
+      ]
+    },
+    {
+      "name": "Hannam University",
+      "domain": "hannam.ac.kr",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "No AI-adjacent roles among current openings.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 3 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "unknown",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/hannam"
+      ]
+    },
+    {
+      "name": "Wickr",
+      "domain": "wickr.com",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "2 of 25 open roles is AI-adjacent.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 2 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "80_to_200",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/wickr"
+      ]
+    },
+    {
+      "name": "Heartland Water Technology",
+      "domain": "heartlandtech.com",
+      "ai_maturity_score": 1,
+      "ai_maturity_justification": [
+        "1 of 9 open engineering roles (11%) are AI-adjacent.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 1 recent AI/ML repo(s)."
+      ],
+      "headcount_band": "15_to_80",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/heartlandtech"
+      ]
+    },
+    {
+      "name": "Yord",
+      "domain": "yord.ru",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "No AI-adjacent roles among current openings.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 13 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "1_to_15",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/yord"
+      ]
+    },
+    {
+      "name": "PHHHOTO",
+      "domain": "phhhoto.com",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "No AI-adjacent roles among current openings.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 3 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "15_to_80",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/phhhoto"
+      ]
+    },
+    {
+      "name": "Tower Bridge International Education",
+      "domain": "tbiedu.com",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "1 of 21 open roles is AI-adjacent.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 13 repos, none AI-related (absence is not proof)."
+      ],
+      "headcount_band": "80_to_200",
+      "top_quartile": false,
+      "sources_checked": [
+        "https://github.com/tbiedu"
+      ]
+    },
+    {
+      "name": "Amagi Group",
+      "domain": "amagigroup.net",
+      "ai_maturity_score": 2,
+      "ai_maturity_justification": [
+        "4 of 13 open engineering roles (31%) are AI-adjacent.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "Public GitHub org has 2 recent AI/ML repo(s)."
+      ],
+      "headcount_band": "80_to_200",
+      "top_quartile": true,
+      "sources_checked": [
+        "https://github.com/amagigroup"
+      ]
+    },
+    {
+      "name": "SharryLand",
+      "domain": "sharry.land",
+      "ai_maturity_score": 0,
+      "ai_maturity_justification": [
+        "No AI-adjacent roles among current openings.",
+        "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "No public GitHub org activity found."
+      ],
+      "headcount_band": "15_to_80",
+      "top_quartile": false,
+      "sources_checked": []
+    }
+  ],
+  "gap_findings": [
+    {
+      "practice": "Peer-group research scope",
+      "peer_evidence": [
+        {
+          "competitor_name": "Yellow.ai",
+          "evidence": "Peer at similar stage with comparable firmographics.",
+          "source_url": "https://yellow.ai"
+        },
+        {
+          "competitor_name": "The New England Conservatory of Music",
+          "evidence": "Second peer at similar stage.",
+          "source_url": "https://necmusic.edu"
+        }
+      ],
+      "prospect_state": "No strong gap detected; peer comparison is informational only.",
+      "confidence": "low",
+      "segment_relevance": [
+        "segment_1_series_a_b"
+      ]
+    }
+  ],
+  "suggested_pitch_shift": "Frame the outreach around a specific capability gap versus top-quartile peers, not a generic talent pitch. Use the peer-evidence specifics.",
+  "gap_quality_self_check": {
+    "all_peer_evidence_has_source_url": true,
+    "at_least_one_gap_high_confidence": false,
+    "prospect_silent_but_sophisticated_risk": false
+  }
+}

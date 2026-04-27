@@ -187,8 +187,13 @@ def compose(
     cal_link: str,
     sequence_position: str = "cold_1",
     tier: str = "dev",
+    rewrite_hint: str = "",
 ) -> Draft:
     """Produce one draft for the given (segment, briefs, prospect) tuple.
+
+    `rewrite_hint`, when non-empty, is appended to the rendered prompt to
+    steer the LLM on a regeneration attempt — typically the `rewrite_hint`
+    field returned by tone_check on a failed first pass.
 
     Raises:
         SegmentMismatch: if segment == 4 and AI-maturity < 2 (spec 03 hard gate).
@@ -207,6 +212,14 @@ def compose(
     rendered = _render_prompt(
         template, brief=brief, gap_brief=gap_brief, prospect=prospect, cal_link=cal_link,
     )
+    if rewrite_hint:
+        rendered += (
+            "\n\n=== REWRITE GUIDANCE (from tone-check on prior draft) ===\n"
+            "The previous draft failed the tone check. Address each item below\n"
+            "in the new draft while keeping all factual claims grounded in the\n"
+            "brief above. Do not invent new numbers.\n\n"
+            f"{rewrite_hint.strip()}\n"
+        )
 
     resp = llm.call(
         rendered, tier=tier, json_mode=True,

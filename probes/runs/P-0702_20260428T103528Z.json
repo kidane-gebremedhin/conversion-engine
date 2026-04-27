@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0702",
+  "category": "scheduling",
+  "name": "East-Africa / EU overlap window",
+  "trigger": "scheduling_overlap",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

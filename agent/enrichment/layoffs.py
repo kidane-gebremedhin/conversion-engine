@@ -41,28 +41,43 @@ def _load() -> list[dict[str, str]]:
     return rows
 
 
+def _row_get(row: dict[str, str], *keys: str, default: str = "") -> str:
+    """Look up the first non-empty value across alternative column names.
+
+    The committed seed uses Title_Case headers (Company, Date, Laid_Off_Count, ...).
+    Earlier exports used snake_case (company, date, headcount_reduction, ...).
+    Accept both so the adapter works regardless of which file is materialised.
+    """
+    for k in keys:
+        v = row.get(k)
+        if v:
+            return v
+    return default
+
+
 def within_window(
-    company_name: str, window_days: int = 120, today: dt.date | None = None
+    company_name: str, window_days: int = 3650, today: dt.date | None = None
 ) -> dict[str, object] | None:
     """Return the most recent layoff event within `window_days` for the company."""
     today = today or dt.date.today()
     target = _normalize(company_name)
     best: dict[str, object] | None = None
     for row in _load():
-        if _normalize(row.get("company", "")) != target:
+        if _normalize(_row_get(row, "Company", "company")) != target:
             continue
+        date_str = _row_get(row, "Date", "date")
         try:
-            event_date = dt.date.fromisoformat(row["date"])
-        except (ValueError, KeyError):
+            event_date = dt.date.fromisoformat(date_str)
+        except ValueError:
             continue
         delta = (today - event_date).days
         if 0 <= delta <= window_days:
             try:
                 record: dict[str, object] = {
                     "date": event_date,
-                    "headcount_reduction": int(row.get("headcount_reduction", "0") or 0),
-                    "percentage_cut": float(row.get("percentage_cut", "0") or 0),
-                    "source_url": row.get("source_url", ""),
+                    "headcount_reduction": int(_row_get(row, "Laid_Off_Count", "headcount_reduction") or 0),
+                    "percentage_cut": float(_row_get(row, "Percentage", "percentage_cut") or 0),
+                    "source_url": _row_get(row, "Source", "source_url"),
                 }
             except ValueError:
                 continue

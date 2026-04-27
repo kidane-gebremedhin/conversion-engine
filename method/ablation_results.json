@@ -1,0 +1,91 @@
+{
+  "partition": "retail_dev_30",
+  "trials": 1,
+  "base_seed": 300,
+  "tau2_pinned_sha": "6e1d57640fb25df43c3d8049abeefade6275c6f0",
+  "git_sha_tau2": "6e1d57640fb25df43c3d8049abeefade6275c6f0",
+  "git_sha_repo": "eb40b4b970209a6dba197820fedc6188f7350482",
+  "n_paired_tasks": 30,
+  "conditions": {
+    "A_baseline": {
+      "agent": "llm_agent",
+      "tier": "dev",
+      "model": "openrouter/deepseek/deepseek-v3.2",
+      "pass_at_1_mean": 0.867,
+      "ci_95": [
+        0.733,
+        0.967
+      ],
+      "cost_total_usd": 0.9732,
+      "cost_per_task_usd": 0.032441,
+      "p50_latency_ms": 150513,
+      "p95_latency_ms": 214929,
+      "n_tasks": 30,
+      "n_simulations": 30,
+      "run_id": "act1_baseline_20260428T150035Z_b796dd",
+      "langfuse_trace_url": "https://us.cloud.langfuse.com/project/conversion-engine/traces/trp1_week10_conversion_engine_3ae86222d486"
+    },
+    "B_mechanism": {
+      "agent": "dual_control_agent",
+      "tier": "dev",
+      "model": "openrouter/deepseek/deepseek-v3.2",
+      "pass_at_1_mean": 0.833,
+      "ci_95": [
+        0.7,
+        0.967
+      ],
+      "cost_total_usd": 1.1144,
+      "cost_per_task_usd": 0.037147,
+      "p50_latency_ms": 129816,
+      "p95_latency_ms": 224451,
+      "n_tasks": 30,
+      "n_simulations": 30,
+      "run_id": "act1_baseline_20260428T152217Z_021445",
+      "langfuse_trace_url": "https://us.cloud.langfuse.com/project/conversion-engine/traces/trp1_week10_conversion_engine_1de3d584708e"
+    },
+    "C_ablation": {
+      "agent": "dual_control_agent_lite",
+      "tier": "dev",
+      "model": "openrouter/deepseek/deepseek-v3.2",
+      "pass_at_1_mean": 0.833,
+      "ci_95": [
+        0.7,
+        0.967
+      ],
+      "cost_total_usd": 1.0031,
+      "cost_per_task_usd": 0.033437,
+      "p50_latency_ms": 144572,
+      "p95_latency_ms": 221761,
+      "n_tasks": 30,
+      "n_simulations": 30,
+      "run_id": "act1_baseline_20260428T155917Z_8085a6",
+      "langfuse_trace_url": "https://us.cloud.langfuse.com/project/conversion-engine/traces/trp1_week10_conversion_engine_70ef431ff97b"
+    }
+  },
+  "automated_optimization_baseline": {
+    "method": "GEPA (placeholder)",
+    "compute_budget_usd": 1.1144,
+    "pass_at_1_mean": null,
+    "ci_95": [
+      null,
+      null
+    ],
+    "note": "Slot reserved per Act IV. Plug in numbers when GEPA is run on the same compute budget."
+  },
+  "deltas": {
+    "delta_a": -0.0333,
+    "delta_a_ci_95": [
+      -0.1667,
+      0.1
+    ],
+    "delta_a_p_value": 0.742,
+    "delta_a_passes_gate": false,
+    "note": "Delta A = B_mechanism \u2212 A_baseline, paired by task_id, two-sided percentile bootstrap. Gate: > 0 AND p < 0.05."
+  },
+  "stat_test": {
+    "method": "paired_task_percentile_bootstrap",
+    "n_resamples": 5000,
+    "bootstrap_seed": 0
+  },
+  "generated_at_utc": "2026-04-28T16:19:23.847420+00:00"
+}

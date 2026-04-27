@@ -1,38 +1,127 @@
 {
-  "partition": "retail_dev_30",
-  "source": "τ²-Bench retail domain — dev slice",
-  "tau2_reference_sha": "REPLACE_WITH_PINNED_COMMIT_SHA",
-  "notes": "30 tasks, stable ordering. To use the real τ²-Bench tasks, clone the repo to eval/tau2 and let eval/harness.py import tau2_bench. This file is the fallback manifest used by the mock runner so the dev loop works offline.",
+  "description": "\u03c4\u00b2-Bench retail dev slice \u2014 first 30 task IDs from the train split. Source of truth: derived from eval/tau2/data/tau2/domains/retail/split_tasks.json.",
+  "domain": "retail",
+  "split": "train",
   "tasks": [
-    {"task_id": "retail_001", "prompt": "Check order status for an existing customer and refund if eligible.", "tags": ["order_lookup", "refund"]},
-    {"task_id": "retail_002", "prompt": "Cancel an order within the cancellation window.", "tags": ["cancel"]},
-    {"task_id": "retail_003", "prompt": "Exchange item for a different size; verify stock.", "tags": ["exchange", "inventory"]},
-    {"task_id": "retail_004", "prompt": "Apply a promo code and recompute total.", "tags": ["pricing"]},
-    {"task_id": "retail_005", "prompt": "Return an already-shipped item and generate return label.", "tags": ["return"]},
-    {"task_id": "retail_006", "prompt": "Split a payment across two cards.", "tags": ["payment"]},
-    {"task_id": "retail_007", "prompt": "Reset password with email verification.", "tags": ["auth"]},
-    {"task_id": "retail_008", "prompt": "Update shipping address on a pending order.", "tags": ["address"]},
-    {"task_id": "retail_009", "prompt": "Check store pickup availability for a product.", "tags": ["inventory"]},
-    {"task_id": "retail_010", "prompt": "Loyalty-points redemption on a partial order.", "tags": ["loyalty"]},
-    {"task_id": "retail_011", "prompt": "Gift-card balance lookup and partial use.", "tags": ["gift_card"]},
-    {"task_id": "retail_012", "prompt": "Backorder handling: item arrives late, offer alternative.", "tags": ["inventory"]},
-    {"task_id": "retail_013", "prompt": "Warranty claim: verify eligibility, open RMA.", "tags": ["warranty"]},
-    {"task_id": "retail_014", "prompt": "International shipping quote with duties estimate.", "tags": ["shipping"]},
-    {"task_id": "retail_015", "prompt": "Bundle discount eligibility and application.", "tags": ["pricing"]},
-    {"task_id": "retail_016", "prompt": "Refund declined — route to specialist with reason.", "tags": ["escalation"]},
-    {"task_id": "retail_017", "prompt": "Item marked hazmat — surface shipping restriction.", "tags": ["shipping"]},
-    {"task_id": "retail_018", "prompt": "Customer has fraud flag — hold action pending review.", "tags": ["fraud", "escalation"]},
-    {"task_id": "retail_019", "prompt": "Multi-item partial refund with tax recomputation.", "tags": ["refund", "tax"]},
-    {"task_id": "retail_020", "prompt": "Dual-control refund over threshold — request approver.", "tags": ["dual_control"]},
-    {"task_id": "retail_021", "prompt": "Subscription pause for 30 days, resume automatically.", "tags": ["subscription"]},
-    {"task_id": "retail_022", "prompt": "Replace misdelivered item with expedited ship.", "tags": ["shipping", "exchange"]},
-    {"task_id": "retail_023", "prompt": "Price match competitor link within 14 days.", "tags": ["pricing"]},
-    {"task_id": "retail_024", "prompt": "Return window expired — offer store credit alternative.", "tags": ["return"]},
-    {"task_id": "retail_025", "prompt": "Customer profile merge from two duplicate accounts.", "tags": ["merge"]},
-    {"task_id": "retail_026", "prompt": "Shipping carrier misquote — recompute with correct weight.", "tags": ["shipping"]},
-    {"task_id": "retail_027", "prompt": "Verify delivery address against USPS and update.", "tags": ["address"]},
-    {"task_id": "retail_028", "prompt": "Loyalty tier upgrade: confirm benefits and apply.", "tags": ["loyalty"]},
-    {"task_id": "retail_029", "prompt": "Cart recovery: apply saved discount on checkout.", "tags": ["pricing"]},
-    {"task_id": "retail_030", "prompt": "Resolve payment auth failure and retry.", "tags": ["payment"]}
+    {
+      "task_id": "0",
+      "description": null
+    },
+    {
+      "task_id": "1",
+      "description": null
+    },
+    {
+      "task_id": "2",
+      "description": null
+    },
+    {
+      "task_id": "3",
+      "description": null
+    },
+    {
+      "task_id": "4",
+      "description": null
+    },
+    {
+      "task_id": "6",
+      "description": null
+    },
+    {
+      "task_id": "7",
+      "description": null
+    },
+    {
+      "task_id": "8",
+      "description": null
+    },
+    {
+      "task_id": "10",
+      "description": null
+    },
+    {
+      "task_id": "11",
+      "description": null
+    },
+    {
+      "task_id": "13",
+      "description": null
+    },
+    {
+      "task_id": "14",
+      "description": null
+    },
+    {
+      "task_id": "15",
+      "description": null
+    },
+    {
+      "task_id": "16",
+      "description": null
+    },
+    {
+      "task_id": "19",
+      "description": null
+    },
+    {
+      "task_id": "20",
+      "description": null
+    },
+    {
+      "task_id": "21",
+      "description": null
+    },
+    {
+      "task_id": "22",
+      "description": null
+    },
+    {
+      "task_id": "23",
+      "description": null
+    },
+    {
+      "task_id": "24",
+      "description": null
+    },
+    {
+      "task_id": "25",
+      "description": null
+    },
+    {
+      "task_id": "28",
+      "description": null
+    },
+    {
+      "task_id": "29",
+      "description": null
+    },
+    {
+      "task_id": "30",
+      "description": null
+    },
+    {
+      "task_id": "31",
+      "description": null
+    },
+    {
+      "task_id": "34",
+      "description": null
+    },
+    {
+      "task_id": "35",
+      "description": null
+    },
+    {
+      "task_id": "37",
+      "description": null
+    },
+    {
+      "task_id": "41",
+      "description": null
+    },
+    {
+      "task_id": "43",
+      "description": null
+    }
   ]
 }

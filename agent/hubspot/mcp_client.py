@@ -45,6 +45,7 @@ import time
 from typing import Any
 
 from agent.config import settings
+from agent.observability.langfuse import _LF_INPUT, _LF_OUTPUT, span
 
 
 class HubSpotMcpError(RuntimeError):
@@ -81,6 +82,10 @@ class HubSpotMcp:
         self._client_ctx: Any = None
         self._stdio_ctx: Any = None
         self._owner_id: int | None = None
+        # HubSpot object types the private-app token cannot manage (403).
+        # Populated by `_ensure_property`; consulted by engagement writers
+        # to strip custom `tenacious_*` properties before the write.
+        self.unsupported_object_types: set[str] = set()
         self._ensure_deps()
         self._start()
         atexit.register(self._shutdown_sync)
@@ -175,20 +180,33 @@ class HubSpotMcp:
                     return first_text
             return parts
 
-        # Retry transient transport errors (Node `fetch failed`, DNS hiccups,
-        # 502/503/504, socket resets). Logical HubSpot errors (validation,
-        # missing scopes, property-not-found) bubble up immediately.
-        last_err: HubSpotMcpError | None = None
-        for attempt in range(3):
-            try:
-                return self._loop.run_until_complete(_call())
-            except HubSpotMcpError as e:
-                if not _is_transient(str(e)) or attempt == 2:
-                    raise
-                last_err = e
-                time.sleep(0.6 * (2 ** attempt))
-        assert last_err is not None
-        raise last_err
+        # Auto-attached span: every MCP tool invocation gets a Langfuse span
+        # with tool_name + arguments (input) + result (output) + retry-aware
+        # latency + status. Picks up the in-scope trace from contextvar.
+        with span(f"hubspot.mcp.{tool_name}", **{"hubspot.tool_name": tool_name}) as s:
+            s[_LF_INPUT] = arguments
+
+            # Retry transient transport errors (Node `fetch failed`, DNS hiccups,
+            # 502/503/504, socket resets). Logical HubSpot errors (validation,
+            # missing scopes, property-not-found) bubble up immediately.
+            last_err: HubSpotMcpError | None = None
+            attempts = 0
+            for attempt in range(3):
+                attempts = attempt + 1
+                try:
+                    result = self._loop.run_until_complete(_call())
+                    s[_LF_OUTPUT] = result
+                    s["hubspot.attempts"] = attempts
+                    return result
+                except HubSpotMcpError as e:
+                    if not _is_transient(str(e)) or attempt == 2:
+                        s["hubspot.attempts"] = attempts
+                        raise
+                    last_err = e
+                    time.sleep(0.6 * (2 ** attempt))
+            assert last_err is not None
+            s["hubspot.attempts"] = attempts
+            raise last_err
 
     # ─── health + owner ────────────────────────────────────────────────
     def healthcheck(self) -> bool:
@@ -221,28 +239,61 @@ class HubSpotMcp:
         return self._owner_id
 
     # ─── properties ────────────────────────────────────────────────────
+    # Property `groupName` per HubSpot object type. Engagement types use
+    # the synthetic `<object>information` group, which HubSpot accepts and
+    # creates on first write.
+    _GROUP_BY_OBJECT = {
+        "contacts": "contactinformation",
+        "deals": "dealinformation",
+        "emails": "emailinformation",
+        "tasks": "taskinformation",
+        "meetings": "meetinginformation",
+    }
+
+    def ensure_property(self, object_type: str, *, name: str, type: str, options: list[str] | None = None) -> bool:
+        return self._ensure_property(object_type, name=name, type=type, options=options)
+
     def ensure_contact_property(self, *, name: str, type: str, options: list[str] | None = None) -> bool:
         return self._ensure_property("contacts", name=name, type=type, options=options)
 
     def ensure_deal_property(self, *, name: str, type: str, options: list[str] | None = None) -> bool:
         return self._ensure_property("deals", name=name, type=type, options=options)
 
+    # Engagement object types — custom properties on these are best-effort:
+    # default property groups (e.g. `meetinginformation`) don't exist on every
+    # portal, and several private-app scopes are needed to even view the
+    # schema. If anything goes wrong while ensuring a property here, we mark
+    # the object type unsupported and let the engagement writer strip
+    # `tenacious_*` keys from the body.
+    _ENGAGEMENT_OBJECT_TYPES = frozenset({"emails", "meetings", "tasks", "calls", "notes"})
+
     def _ensure_property(self, object_type: str, *, name: str, type: str, options: list[str] | None) -> bool:
+        # Memoised per-process: object types the token can't manage are
+        # silently skipped. Engagement writers consult this set and strip
+        # `tenacious_*` properties before attempting the write.
+        if object_type in self.unsupported_object_types:
+            return False
+        is_engagement = object_type in self._ENGAGEMENT_OBJECT_TYPES
         try:
             self.call("hubspot-get-property", {"objectType": object_type, "propertyName": name})
             return False
         except HubSpotMcpError as e:
-            # Only treat genuine "property not found" as missing. Anything
-            # else (transport hiccup, missing scope, validation) must
-            # surface — silently swallowing it leads to a misleading
-            # `hubspot-create-property` failure on the next line.
-            if not _looks_like_property_missing(str(e)):
+            msg = str(e)
+            if _looks_like_object_scope_denied(msg):
+                # Token lacks scope to view this object's property schema. Skip
+                # and remember — we cannot create the property either.
+                self.unsupported_object_types.add(object_type)
+                return False
+            # Treat "property not found" as missing. For engagement types
+            # tolerate any other read error (validation / scope quirks) and
+            # try the create anyway; if that fails too, mark unsupported.
+            if not _looks_like_property_missing(msg) and not is_engagement:
                 raise
         payload: dict[str, Any] = {
             "objectType": object_type,
             "name": name,
             "label": name,
-            "groupName": "contactinformation" if object_type == "contacts" else "dealinformation",
+            "groupName": self._GROUP_BY_OBJECT.get(object_type, f"{object_type}information"),
             "type": _normalize_prop_type(type, options),
             "fieldType": _normalize_field_type(type, options),
         }
@@ -250,8 +301,16 @@ class HubSpotMcp:
             payload["options"] = [{"label": o, "value": o} for o in options]
         if type == "bool":
             payload["options"] = [{"label": "true", "value": "true"}, {"label": "false", "value": "false"}]
-        self.call("hubspot-create-property", payload)
-        return True
+        try:
+            self.call("hubspot-create-property", payload)
+            return True
+        except HubSpotMcpError as e:
+            if is_engagement or _looks_like_object_scope_denied(str(e)):
+                # Engagements: any failure (group missing, scope, validation)
+                # is recoverable — strip `tenacious_*` from the eventual write.
+                self.unsupported_object_types.add(object_type)
+                return False
+            raise
 
     # ─── contacts ──────────────────────────────────────────────────────
     def upsert_contact(self, properties: dict[str, Any], *, email: str) -> str:
@@ -335,6 +394,11 @@ class HubSpotMcp:
         # Email / meeting / call: batch-create-objects with typed properties.
         object_type = {"email": "emails", "meeting": "meetings", "call": "calls"}.get(et, et + "s")
         props = _stringify(body)
+        if object_type in self.unsupported_object_types:
+            # Token can't manage custom properties on this object type. Drop
+            # `tenacious_*` keys and embed the metadata into the body text
+            # so trace_id / message_id / tone_scores are still recoverable.
+            props = self._strip_tenacious_props(props, object_type)
         input_obj: dict[str, Any] = {"properties": props}
         if contact_ids:
             input_obj["associations"] = [
@@ -344,11 +408,49 @@ class HubSpotMcp:
                 }
                 for cid in contact_ids
             ]
-        created = self.call(
-            "hubspot-batch-create-objects",
-            {"objectType": object_type, "inputs": [input_obj]},
-        )
+        try:
+            created = self.call(
+                "hubspot-batch-create-objects",
+                {"objectType": object_type, "inputs": [input_obj]},
+            )
+        except HubSpotMcpError as e:
+            # If the schema check passed earlier (or wasn't run) but the write
+            # still hits PROPERTY_DOESNT_EXIST, mark the object type unsupported
+            # and retry once with `tenacious_*` keys stripped.
+            if not _looks_like_property_missing(str(e)):
+                raise
+            self.unsupported_object_types.add(object_type)
+            input_obj["properties"] = self._strip_tenacious_props(props, object_type)
+            created = self.call(
+                "hubspot-batch-create-objects",
+                {"objectType": object_type, "inputs": [input_obj]},
+            )
         return _first_id(created)
+
+    @staticmethod
+    def _strip_tenacious_props(props: dict[str, Any], object_type: str) -> dict[str, Any]:
+        """Remove tenacious_* keys; preserve their values in a body field so
+        the trace remains recoverable from HubSpot UI."""
+        keep: dict[str, Any] = {}
+        dropped: dict[str, Any] = {}
+        for k, v in props.items():
+            if k.startswith("tenacious_"):
+                dropped[k] = v
+            else:
+                keep[k] = v
+        if not dropped:
+            return keep
+        # Stash the dropped meta in the most appropriate body field per object.
+        body_field = {
+            "emails": "hs_email_text",
+            "meetings": "hs_meeting_body",
+            "tasks": "hs_task_body",
+        }.get(object_type, "hs_email_text")
+        existing = str(keep.get(body_field, "") or "")
+        meta = " ".join(f"{k}={v}" for k, v in sorted(dropped.items()))
+        keep[body_field] = (existing + ("\n\n" if existing else "") +
+                            f"---\n[tenacious-meta] {meta}")
+        return keep
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -408,6 +510,18 @@ def _looks_like_property_missing(text: str) -> bool:
         or '"propertyname"' in low and "does not exist" in low
         or "no property named" in low
         or "404" in low and "property" in low
+    )
+
+
+def _looks_like_object_scope_denied(text: str) -> bool:
+    """403 because the private-app token lacks scope to view/manage this object type."""
+    low = text.lower()
+    return (
+        "403" in low and (
+            "do not have permissions" in low
+            or "missing_scopes" in low
+            or "requires one of" in low
+        )
     )
 
 

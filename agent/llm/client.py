@@ -20,6 +20,13 @@ from typing import Any
 
 from agent.config import settings, config
 from agent.observability.cost import cost_usd
+from agent.observability.langfuse import (
+    _LF_INPUT,
+    _LF_MODEL,
+    _LF_OUTPUT,
+    _LF_USAGE,
+    generation,
+)
 
 
 @dataclass
@@ -107,17 +114,54 @@ def call(
 
     model_id = _pick_model(tier, model)
 
-    if _is_stub_mode(tier):
-        text = _stub_text(prompt, system, json_mode)
-        return LlmCall(text=text, model=model_id, tier=tier, cost_usd=0.0, finish_reason="stub")
+    # Auto-attached generation: every LLM call emits one Langfuse generation
+    # carrying model, prompt, response, tokens, cost, latency. Picks up the
+    # in-scope trace via context-local `current_trace()` — callers don't
+    # have to thread a TraceHandle in.
+    with generation(f"llm.{tier}", **{"tier": tier}) as s:
+        s[_LF_INPUT] = _shape_input(prompt, system, temperature, max_tokens, json_mode, seed)
 
-    # Real providers. All calls use the OpenAI-compatible REST shape where possible.
-    if tier == "dev":
-        return _call_openrouter(prompt, model_id, system, temperature, max_tokens, json_mode, seed)
-    provider = settings.EVAL_LLM_PROVIDER
-    if provider == "anthropic":
-        return _call_anthropic(prompt, model_id, system, temperature, max_tokens, json_mode)
-    return _call_openai(prompt, model_id, system, temperature, max_tokens, json_mode, seed)
+        if _is_stub_mode(tier):
+            text = _stub_text(prompt, system, json_mode)
+            result = LlmCall(text=text, model=model_id, tier=tier, cost_usd=0.0, finish_reason="stub")
+        elif tier == "dev":
+            result = _call_openrouter(prompt, model_id, system, temperature, max_tokens, json_mode, seed)
+        else:
+            provider = settings.EVAL_LLM_PROVIDER
+            if provider == "anthropic":
+                result = _call_anthropic(prompt, model_id, system, temperature, max_tokens, json_mode)
+            else:
+                result = _call_openai(prompt, model_id, system, temperature, max_tokens, json_mode, seed)
+
+        s[_LF_MODEL] = result.model
+        s[_LF_OUTPUT] = result.text
+        s[_LF_USAGE] = {
+            "input": result.prompt_tokens,
+            "output": result.completion_tokens,
+            "total": result.prompt_tokens + result.completion_tokens,
+            "unit": "TOKENS",
+            "input_cost": cost_usd(result.model, result.prompt_tokens, 0),
+            "output_cost": cost_usd(result.model, 0, result.completion_tokens),
+            "total_cost": result.cost_usd,
+        }
+        s["cost.usd"] = result.cost_usd
+        s["llm.finish_reason"] = result.finish_reason
+        s["llm.requested_model"] = model_id
+        return result
+
+
+def _shape_input(prompt: str, system: str | None, temperature: float,
+                 max_tokens: int, json_mode: bool, seed: int | None) -> dict[str, Any]:
+    return {
+        "system": system,
+        "prompt": prompt,
+        "params": {
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "json_mode": json_mode,
+            "seed": seed,
+        },
+    }
 
 
 def _call_openrouter(

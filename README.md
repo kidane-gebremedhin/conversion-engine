@@ -130,20 +130,23 @@ make final-check                         # pre-submission gauntlet
 
 **Available synthetic prospect domains** (use with `DOMAIN=`):
 
-| Domain | Company | Segment |
-|---|---|---|
-| `delamode-group.com` | Delamode | seg4 — specialized capability |
-| `conshohockenbrewing.com` | Conshohocken Brewing | seg4 |
-| `whitehilltech.com` | Whitehill Technologies | seg4 |
-| `connempathy.com` | Connempathy | seg4 |
-| `consolidatedparts.com` | Consolidated Parts | abstain |
-| `alliancehospice.com` | Alliance Hospice | abstain |
-| `americraftmfg.com` | Americraft | abstain |
-| `fivestarcarting.com` | Five Star Carting | abstain |
-| `comax.coop` | La Coop Comax | abstain |
-| `windowclassics.com` | Window Classics | abstain |
+| Domain | Company | Segment | Why |
+|---|---|---|---|
+| `spotright.com` | SpotRight | seg1 — Series A/B | recent funding in band, ≥5 open eng roles |
+| `culcha.com` | Culcha | seg1 | recent funding in band, AI-adjacent hiring |
+| `lifebrand.life` | LifeBrand | seg1 | recent funding, growing eng team |
+| `yellow.ai` | Yellow.ai | seg2 — mid-market restructure | layoff + funding, layoff_overrides_funding flag |
+| `ourbranch.com` | Branch | seg2 | layoff + funding, post-event hiring |
+| `mylola.com` | LOLA | seg2 | layoff + funding |
+| `smarttrader.com` | SmartTrader | seg3 — leadership transition | new CTO announced (press feed), within window |
+| `delamode-group.com` | Delamode | seg4 — specialized capability | AI-maturity ≥2, stalled specialist req |
+| `consolidatedparts.com` | Consolidated Parts | seg4 | AI-maturity ≥2 |
+| `prosperaenergy.com` | Prospera Energy | seg4 | AI-maturity ≥2, recent funding |
+| `alma-clinic.com` | Alma Clinics | seg1 | $2.8M seed, hiring active |
+| `alliancehospice.com` | Alliance Hospice | abstain | no funding/layoff/leadership signal |
+| `operable.io` | Operable | abstain | only funding round is from 2015 (>10y) |
 
-_(See `data/synthetic_prospects.json` for all 25 prospects.)_
+_All buying-window date gates (funding, layoff, leadership-change) are configured to a 10-year (`3650`-day) lookback in `config.yaml`. See `data/synthetic_prospects.json` for all 1,000 prospects derived from the Crunchbase sample._
 
 ---
 

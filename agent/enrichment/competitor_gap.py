@@ -42,7 +42,7 @@ def _peer_entry(record: dict[str, Any]) -> CompetitorEntry:
         domain=record["domain"],
         ai_maturity_score=int(mat["score"]),
         ai_maturity_justification=justifs[:3],
-        headcount_band=HeadcountBand(record.get("headcount_band", "15_to_80")),
+        headcount_band=HeadcountBand(record.get("headcount_band") or "unknown"),
         top_quartile=False,
         sources_checked=sources,
     )

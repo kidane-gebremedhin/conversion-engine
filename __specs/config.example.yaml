@@ -280,7 +280,7 @@ observability:
 # Update these when a provider publishes new pricing. Never hard-coded elsewhere.
 llm:
   rate_cards:
-    qwen/qwen3-next-80b-a3b:
+    qwen/qwen3-next-80b-a3b-instruct:
       input_per_1m_usd: 0.20
       output_per_1m_usd: 0.80
     deepseek/deepseek-v3.2:

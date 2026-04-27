@@ -115,12 +115,27 @@ _SCORERS = [
 
 
 def score(record: dict[str, Any]) -> dict[str, Any]:
-    """Return {score:int, confidence:float, justifications:list} for a prospect."""
+    """Return {score:int, confidence:float, justifications:list} for a prospect.
+
+    Score composition:
+      1. Compute the weighted average of all signal strengths (0–3 scale).
+      2. Apply a "best high-weight signal" floor: a single strong (≥2) firing
+         on a high-weight signal cannot be drowned out by absence-of-evidence
+         zeros on other signals. Specifically, the final score is at least
+         `max_high_weight_strength - 1`. So if any high-weight signal scores 3
+         the floor is 2; if any scores 2 the floor is 1.
+
+    This keeps the weighted-mean for "everything firing" companies but stops
+    the rounding from collapsing to zero/one when only one or two signals are
+    available — which is the common case for B2B firms outside the top-of-funnel
+    AI/ML stack.
+    """
     weights_cfg = config.get("ai_maturity.weights", {})
     justifications: list[dict[str, Any]] = []
     weighted_sum = 0.0
     max_sum = 0.0
     high_conf_high_weight_inputs = 0
+    high_weight_strengths: list[int] = []
 
     for signal_name, scorer in _SCORERS:
         strength, status, conf = scorer(record)
@@ -129,8 +144,10 @@ def score(record: dict[str, Any]) -> dict[str, Any]:
 
         weighted_sum += strength * weight_num
         max_sum += 3 * weight_num
-        if weight_name == "high" and conf == "high" and strength >= 2:
-            high_conf_high_weight_inputs += 1
+        if weight_name == "high":
+            high_weight_strengths.append(strength)
+            if conf == "high" and strength >= 2:
+                high_conf_high_weight_inputs += 1
 
         justifications.append({
             "signal": signal_name,
@@ -141,7 +158,11 @@ def score(record: dict[str, Any]) -> dict[str, Any]:
         })
 
     normalized = (weighted_sum / max_sum) * 3 if max_sum else 0.0
-    rounded = max(0, min(3, round(normalized)))
+    rounded = round(normalized)
+
+    # Floor: best high-weight signal pulls up the score.
+    floor = max(high_weight_strengths) - 1 if high_weight_strengths else 0
+    final = max(0, min(3, max(rounded, floor)))
 
     # confidence: grows with # high-weight high-conf inputs with strong strength
     if high_conf_high_weight_inputs >= 2:
@@ -152,7 +173,7 @@ def score(record: dict[str, Any]) -> dict[str, Any]:
         confidence = 0.45
 
     return {
-        "score": int(rounded),
+        "score": int(final),
         "confidence": float(round(confidence, 2)),
         "justifications": justifications,
     }

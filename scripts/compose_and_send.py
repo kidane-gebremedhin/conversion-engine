@@ -23,7 +23,7 @@ from agent.hubspot import events as hevents
 from agent.hubspot.client import HubSpotClient
 from agent.hubspot.schema import ensure_all
 from agent.kill_switch import deliver, EmailPayload, add_draft_header
-from agent.observability.langfuse import new_trace, span
+from agent.observability.langfuse import new_trace, span, verify_trace
 from agent.tone_check import check as tone_check, log_flagged
 
 
@@ -81,10 +81,14 @@ def main() -> int:
         s["scores"] = result.scores
         s["overall_ok"] = result.overall_ok
         if not result.overall_ok:
-            # regenerate once
+            # Regenerate once, passing the tone-checker's rewrite_hint so the
+            # LLM knows which areas to address (e.g. "soften urgency in opener",
+            # "remove fabricated metric in line 3").
+            s["rewrite_hint"] = result.rewrite_hint
             draft = compose(
                 segment=seg, brief=brief, gap_brief=gap_brief, prospect=prospect,
                 cal_link=cal_link, sequence_position="cold_1",
+                rewrite_hint=result.rewrite_hint,
             )
             result = tone_check(draft.subject, draft.body_text, brief_summary=json.dumps(brief.model_dump(), default=str)[:1200], regen_count=1)
             if not result.overall_ok:
@@ -123,12 +127,20 @@ def main() -> int:
         tone_scores=result.scores,
     )
 
+    # Flush the Langfuse queue and trust the SDK's POST result — see
+    # agent.observability.langfuse.verify_trace for why we don't poll.
+    pushed = verify_trace(trace.trace_id)
+
     print(f"✓ sent draft for {args.domain}")
     print(f"  subject: {draft.subject}")
     print(f"  words:   {draft.notes}")
     print(f"  sink:    {delivery.sink} ({delivery.provider})")
     print(f"  message: {delivery.message_id}")
     print(f"  trace:   {trace.url()}")
+    if pushed:
+        print(f"  langfuse: pushed (visible in UI in ~10–15s)")
+    else:
+        print(f"  langfuse: disabled — see warning above for cause")
     return 0
 
 

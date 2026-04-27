@@ -112,7 +112,7 @@ def enrich(
     # Stage 3: layoffs
     # ──────────────────────────────────────────────────────────────────────
     with span("enrichment.layoffs", trace=trace) as s:
-        layoff = layoffs.within_window(record.get("name", ""), window_days=int(config.get("layoffs.window_days", 120)))
+        layoff = layoffs.within_window(record.get("name", ""), window_days=int(config.get("layoffs.window_days", 3650)))
         s["detected"] = bool(layoff)
     layoff_event = LayoffEvent(
         detected=bool(layoff),
@@ -188,7 +188,7 @@ def enrich(
     # Stage 7: funding event
     # ──────────────────────────────────────────────────────────────────────
     with span("enrichment.funding", trace=trace) as s:
-        funding = crunchbase.recent_funding_event(record, window_days=int(config.get("funding.window_days", 180)))
+        funding = crunchbase.recent_funding_event(record, window_days=int(config.get("funding.window_days", 3650)))
         s["detected"] = bool(funding)
     funding_event = FundingEvent(
         detected=bool(funding),
@@ -225,7 +225,9 @@ def enrich(
     # Run the ICP classifier
     from agent.classifier import classify
     with span("enrichment.classify", trace=trace) as s:
-        result = classify(preliminary.model_dump())
+        # mode='json' coerces enum values to their underlying strings; the
+        # classifier does case-insensitive string comparison against config.
+        result = classify(preliminary.model_dump(mode="json"))
         s["segment"] = result.segment
         s["confidence"] = result.confidence
     preliminary.primary_segment_match = Segment(result.segment) if result.segment != "abstain" else Segment.ABSTAIN

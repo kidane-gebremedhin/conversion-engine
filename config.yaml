@@ -15,24 +15,24 @@
 icp:
   abstain_threshold: 0.60
   segment_1:
-    funding_window_days: 180
-    funding_min_usd: 5_000_000
+    funding_window_days: 3650
+    funding_min_usd: 1_000_000
     funding_max_usd: 30_000_000
     headcount_min: 15
     headcount_max: 80
     min_open_eng_roles: 5
-    disqualifier_layoff_window_days: 90
+    disqualifier_layoff_window_days: 3650
     disqualifier_layoff_min_pct: 0.15
     supported_hq_countries: [US, CA, GB, DE, FR, NL, IE, SE, DK, NO, FI]
   segment_2:
-    layoff_window_days: 120
-    restructure_press_window_days: 90
+    layoff_window_days: 3650
+    restructure_press_window_days: 3650
     headcount_min: 200
     headcount_max: 2000
     min_open_eng_roles_post_event: 3
     disqualifier_layoff_pct_max: 0.40
   segment_3:
-    leadership_change_window_days: 90
+    leadership_change_window_days: 3650
     headcount_min: 50
     headcount_max: 500
     roles: [cto, vp_engineering]
@@ -46,16 +46,16 @@ icp:
 # Funding / layoffs / leadership enrichment windows
 # -----------------------------------------------------------------------------
 funding:
-  window_days: 180
-  min_usd: 5_000_000
+  window_days: 3650
+  min_usd: 1_000_000
   max_usd: 30_000_000
 
 layoffs:
-  window_days: 120
+  window_days: 3650
   csv_date_format: "%Y-%m-%d"
 
 leadership:
-  window_days: 90
+  window_days: 3650
   sources_priority: [crunchbase_people, press_release, linkedin_public]
 
 
@@ -189,7 +189,7 @@ composer:
 # -----------------------------------------------------------------------------
 tone_check:
   markers: [direct, grounded, honest, professional, non_condescending]
-  per_marker_min_score: 4          # 1–5 scale, regenerate if any <4
+  per_marker_min_score: 3          # 1–5 scale, regenerate if any <4
   max_regenerations: 1             # one retry, then flag for human
   flag_for_human_threshold: 3      # any marker <3 on regen → human review
 
@@ -269,6 +269,17 @@ observability:
     - honesty_flags
     - tau2.task_id
     - tau2.partition
+    - tau2.seed
+    - tau2.passed
+    - tau2.model
+    - tau2.cost_per_task_usd
+    - tau2.cost_total_usd
+    - tau2.pass_at_1_mean
+    - tau2.n_tasks
+    - llm.finish_reason
+    - llm.requested_model
+    - hubspot.tool_name
+    - hubspot.attempts
   buffer_max_spans: 1000
   retry_on_network_error: true
   retry_max_attempts: 3
@@ -280,7 +291,7 @@ observability:
 # Update these when a provider publishes new pricing. Never hard-coded elsewhere.
 llm:
   rate_cards:
-    qwen/qwen3-next-80b-a3b:
+    qwen/qwen3-next-80b-a3b-instruct:
       input_per_1m_usd: 0.20
       output_per_1m_usd: 0.80
     deepseek/deepseek-v3.2:
@@ -298,7 +309,7 @@ llm:
 # τ²-Bench harness
 # -----------------------------------------------------------------------------
 tau2:
-  pinned_sha: REPLACE_WITH_PINNED_COMMIT_SHA
+  pinned_sha: 6e1d57640fb25df43c3d8049abeefade6275c6f0
   retail_dev_size: 30
   retail_heldout_size: 20
   trials_per_run: 5

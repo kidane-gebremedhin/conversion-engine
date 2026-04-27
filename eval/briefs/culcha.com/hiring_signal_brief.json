@@ -1,0 +1,109 @@
+{
+  "prospect_domain": "culcha.com",
+  "prospect_name": "Culcha",
+  "generated_at": "2026-04-28T13:59:18.718185Z",
+  "primary_segment_match": "segment_4_specialized_capability",
+  "segment_confidence": 0.75,
+  "ai_maturity": {
+    "score": 2,
+    "confidence": 0.65,
+    "justifications": [
+      {
+        "signal": "ai_adjacent_open_roles",
+        "status": "3 of 8 open engineering roles (38%) are AI-adjacent.",
+        "weight": "high",
+        "confidence": "high",
+        "source_url": "https://builtin.com/company/culcha/jobs"
+      },
+      {
+        "signal": "named_ai_ml_leadership",
+        "status": "No public Head of AI, VP Data, or Chief Scientist on team page or Crunchbase.",
+        "weight": "high",
+        "confidence": "high"
+      },
+      {
+        "signal": "github_org_activity",
+        "status": "Public GitHub org has 3 recent AI/ML repos out of 23.",
+        "weight": "medium",
+        "confidence": "high",
+        "source_url": "https://github.com/culcha"
+      },
+      {
+        "signal": "executive_commentary",
+        "status": "No executive commentary on AI strategy in the last 12 months.",
+        "weight": "medium",
+        "confidence": "medium"
+      },
+      {
+        "signal": "modern_data_ml_stack",
+        "status": "No modern data/ML stack signal from BuiltWith/Wappalyzer.",
+        "weight": "low",
+        "confidence": "medium"
+      },
+      {
+        "signal": "strategic_communications",
+        "status": "No strategic-communications signal found.",
+        "weight": "low",
+        "confidence": "low"
+      }
+    ]
+  },
+  "hiring_velocity": {
+    "open_roles_today": 8,
+    "open_roles_60_days_ago": 10,
+    "velocity_label": "flat",
+    "signal_confidence": 0.85,
+    "sources": [
+      "builtin",
+      "linkedin_public",
+      "wellfound"
+    ]
+  },
+  "buying_window_signals": {
+    "funding_event": {
+      "detected": true,
+      "stage": "seed",
+      "amount_usd": 1347527,
+      "closed_at": "2022-01-31",
+      "source_url": "https://www.crunchbase.com/funding_round/culcha-gmbh-seed--08e896e2"
+    },
+    "layoff_event": {
+      "detected": false
+    },
+    "leadership_change": {
+      "detected": false
+    }
+  },
+  "tech_stack": [
+    "Apple Mobile Web App Capable",
+    "Apple Mobile Web App Status Bar Style",
+    "HSTS IncludeSubdomains PreLoad",
+    "HubSpot CMS Hub",
+    "Lorem Ipsum",
+    "Mobile Non Scaleable Content",
+    "Smart App Banner"
+  ],
+  "bench_to_brief_match": {
+    "required_stacks": [],
+    "bench_available": true,
+    "gaps": []
+  },
+  "data_sources_checked": [
+    {
+      "source": "crunchbase_odm",
+      "status": "success",
+      "fetched_at": "2026-04-28T13:59:18.673496Z"
+    },
+    {
+      "source": "job_posts_snapshot",
+      "status": "success",
+      "fetched_at": "2026-04-01T00:00:00Z"
+    },
+    {
+      "source": "layoffs_fyi",
+      "status": "no_data",
+      "fetched_at": "2026-04-28T13:59:18.715150Z"
+    }
+  ],
+  "honesty_flags": []
+}

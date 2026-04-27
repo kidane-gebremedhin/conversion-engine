@@ -1,0 +1,16 @@
+{
+  "probe_id": "P-0903",
+  "category": "gap_over_claiming",
+  "name": "peers_min suppression \u2014 fabricated peer practice prevented",
+  "trigger": "static_check",
+  "runs": 20,
+  "triggered": 0,
+  "trigger_rate": 0.0,
+  "outcomes_sample": [
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met",
+    "expected_met"
+  ]
+}

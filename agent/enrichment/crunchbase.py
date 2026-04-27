@@ -50,7 +50,7 @@ def lookup_by_domain(domain: str) -> dict[str, Any] | None:
     return None
 
 
-def recent_funding_event(record: dict[str, Any], window_days: int = 180) -> dict[str, Any] | None:
+def recent_funding_event(record: dict[str, Any], window_days: int = 3650) -> dict[str, Any] | None:
     """Return the most recent funding round within `window_days`, or None."""
     today = dt.date.today()
     best: dict[str, Any] | None = None
@@ -70,7 +70,7 @@ def recent_funding_event(record: dict[str, Any], window_days: int = 180) -> dict
 
 
 def new_leadership_in_window(
-    record: dict[str, Any], window_days: int = 90, roles: tuple[str, ...] = ("cto", "vp_engineering")
+    record: dict[str, Any], window_days: int = 3650, roles: tuple[str, ...] = ("cto", "vp_engineering")
 ) -> dict[str, Any] | None:
     """Return a leadership entry newly appointed within `window_days`, matching a role."""
     today = dt.date.today()

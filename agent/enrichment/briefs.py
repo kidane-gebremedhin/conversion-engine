@@ -56,13 +56,22 @@ class VelocityLabel(str, Enum):
 
 
 class FundingStage(str, Enum):
+    PRE_SEED = "pre_seed"
     SEED = "seed"
+    ANGEL = "angel"
     SERIES_A = "series_a"
     SERIES_B = "series_b"
     SERIES_C = "series_c"
+    SERIES_D = "series_d"
+    SERIES_E = "series_e"
     SERIES_D_PLUS = "series_d_plus"
+    VENTURE_ROUND = "venture_round"
+    PRIVATE_EQUITY = "private_equity"
+    POST_IPO = "post_ipo"
+    GRANT = "grant"
     DEBT = "debt"
     OTHER = "other"
+    UNKNOWN = "unknown"
     NONE = "none"
 
 
@@ -85,11 +94,13 @@ class SourceStatus(str, Enum):
 
 
 class HeadcountBand(str, Enum):
+    HC_1_15 = "1_to_15"
     HC_15_80 = "15_to_80"
     HC_80_200 = "80_to_200"
     HC_200_500 = "200_to_500"
     HC_500_2000 = "500_to_2000"
     HC_2000_PLUS = "2000_plus"
+    UNKNOWN = "unknown"
 
 
 class HonestyFlag(str, Enum):

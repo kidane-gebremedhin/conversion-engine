@@ -1,6 +1,6 @@
-# Runbook — Start-to-Finish Operations Guide
+# Runbook
 
-All commands run from the repo root. Four terminals recommended.
+All commands run from the repo root.
 
 | Terminal | Process | Command | Lifetime |
 |---|---|---|---|
@@ -13,104 +13,62 @@ All commands run from the repo root. Four terminals recommended.
 
 ---
 
-## 0. One-Time Setup
+## 1. One-Time Setup
 
 ```bash
-# Install Python deps and scaffold config
-make setup
-
-# Fill in all required credentials
-vi .env
-
-# Policy acknowledgement (smoke test requires this)
-make ack
-
-# Global installs (host-level, once)
-npm install -g @hubspot/mcp-server
+make setup                               # venv, deps, scaffold .env + config.yaml
+vi .env                                  # fill in credentials
+make ack                                 # policy acknowledgement (smoke-test gate)
+npm install -g @hubspot/mcp-server       # global, once per machine
 ```
 
-Verify prerequisites:
-```bash
-node --version          # v18+
-docker --version
-```
+Prereqs: `node --version` ≥ v18, `docker --version` available.
 
 ---
 
-## 1. Start Cal.com (Terminal A)
+## 2. Cal.com (Terminal A)
 
+First boot only:
 ```bash
-# First boot: create secrets file
 cp infra/.env.calcom.example infra/.env.calcom
-# Edit infra/.env.calcom — fill in:
-#   NEXTAUTH_SECRET=$(openssl rand -base64 32)
-#   CALENDSO_ENCRYPTION_KEY=$(openssl rand -hex 16)
-#   CRON_API_KEY=$(openssl rand -base64 32)
-
-# Start
+# fill in NEXTAUTH_SECRET, CALENDSO_ENCRYPTION_KEY, CRON_API_KEY
 docker compose -f infra/docker-compose.yml up -d
-
-# Watch until ready
-docker compose -f infra/docker-compose.yml logs -f calcom
-# Ready when: "ready - started server on 0.0.0.0:3000"
 ```
 
-**First boot only:** Open http://localhost:3000, create admin account, then create two event types:
-- `discovery-15` (15 min)
-- `discovery-30` (30 min)
+Open <http://localhost:3000>, create admin account, then create event types `discovery-15` and `discovery-30`. Copy the API key from Settings → Developer into `.env`:
 
-Copy the API key from Settings → Developer into `.env`:
 ```
 CALCOM_API_KEY=cal_live_...
 CALCOM_USERNAME=<your-username>
 ```
 
-Verify:
-```bash
-make day0-calcom
-# ✓ booked: id=bk-...
-```
+Verify: `make day0-calcom` → `✓ booked: id=bk-...`.
 
 ---
 
-## 2. Start Webhook Tunnel (Terminal B)
+## 3. Webhook Tunnel (Terminal B)
 
 ```bash
-# Option 1: ngrok
 ngrok http 8000 --domain=<your-subdomain>.ngrok.app
-
-# Option 2: Cloudflare Tunnel
-cloudflared tunnel --url http://localhost:8000
+# or: cloudflared tunnel --url http://localhost:8000
 ```
 
-Copy the public URL and update `.env`:
-```
-RESEND_WEBHOOK_URL=https://<your-url>/webhook/email
-AT_WEBHOOK_URL=https://<your-url>/webhook/sms
-CALCOM_WEBHOOK_URL=https://<your-url>/webhook/cal
-```
+Update `.env` with the public URL and register webhooks at each provider:
 
-Register webhooks at each provider:
-- **Resend** → Webhooks → `email.bounced`, `email.replied`; copy signing secret → `RESEND_WEBHOOK_SECRET`
-- **Africa's Talking** → SMS → Callback URLs → delivery + incoming
-- **Cal.com** → Settings → Developer → Webhooks → `BOOKING_CREATED`; secret → `CALCOM_WEBHOOK_SECRET`
+| Provider | Path | Secret env var |
+|---|---|---|
+| Resend | `/webhook/email` (`email.bounced`, `email.replied`) | `RESEND_WEBHOOK_SECRET` |
+| Africa's Talking | `/webhook/sms` (delivery + incoming) | — |
+| Cal.com | `/webhook/cal` (`BOOKING_CREATED`) | `CALCOM_WEBHOOK_SECRET` |
 
 ---
 
-## 3. Start FastAPI (Terminal C)
+## 4. FastAPI (Terminal C)
 
 ```bash
-make server
-# uvicorn on http://0.0.0.0:8000
-```
-
-Verify:
-```bash
+make server                              # uvicorn on :8000
 curl -s localhost:8000/health | jq
-# { "ok": true, "kill_switch": "sink", ... }
 ```
-
-Endpoints:
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -122,179 +80,133 @@ Endpoints:
 
 ---
 
-## 4. Langfuse (Cloud — No Daemon)
+## 5. Langfuse
 
-Just set keys in `.env`:
+Cloud, no daemon. Set in `.env`:
 ```
 LANGFUSE_HOST=https://cloud.langfuse.com
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_PROJECT_ID=<uuid>
 ```
-When keys are absent, traces go to `data/local_traces.jsonl` (works for dev, not for memo evidence).
+Without keys, traces fall back to `data/local_traces.jsonl`.
 
 ---
 
-## 5. Verify Everything
+## 6. Verify
 
 ```bash
 make smoke
-# ✓ Policy acknowledgement filed
-# ✓ Kill switch TENACIOUS_OUTBOUND_ENABLED is unset
-# ✓ Synthetic prospects fixture present (25 entries)
-# ✓ Email deliver() routes to sink
-# ✓ SMS deliver() routes to sink
-# ✓ HubSpot client reachable (mode=mcp)
-# ✓ Cal.com client reachable
-# ✓ Langfuse reachable
+# ✓ policy ack, kill-switch unset, sinks routing, HubSpot/Cal.com/Langfuse reachable
 ```
 
 ---
 
-## 6. Day-to-Day Operations
+## 7. Day-to-Day
 
-### Enrich a prospect
+### Enrich + send
+
 ```bash
-make enrich DOMAIN=delamode-group.com
-# Writes briefs to eval/briefs/delamode-group.com/
+make enrich DOMAIN=culcha.com            # → eval/briefs/<domain>/
+make compose-and-send DOMAIN=culcha.com  # → enrich → compose → tone-check → sink → HubSpot
 ```
 
-### End-to-end email send (kill-switch gated)
+Domain must match a `company_domain` in [`data/synthetic_prospects.json`](data/synthetic_prospects.json).
+
+### τ²-Bench harness — produce a score
+
+The harness ([`eval/harness.py`](eval/harness.py)) drives the vendored τ²-Bench at [`eval/tau2/`](eval/tau2/) via `tau2.runner.batch.run_tasks`. Every score in [`eval/score_log.json`](eval/score_log.json) reflects a real multi-turn retail conversation; there is no mock fallback.
+
+Each run emits one Langfuse trace with a `tau2.trial` generation per (task, seed) carrying the turn-by-turn trajectory, model, tokens, and `cost.usd`. The parent trace gets `tau2.cost_per_task_usd`, `tau2.cost_total_usd`, `tau2.pass_at_1_mean`, and a `pass_at_1` Langfuse score.
+
+**Dev-slice baseline (Act I):**
 ```bash
-make compose-and-send DOMAIN=delamode-group.com
-# Enrich → compose → tone-check → deliver to sink → HubSpot write
+make tau2-baseline                                                # 30 tasks × 5 trials
+make tau2-baseline TAU2_TRIALS=1                                  # quick smoke (1 trial)
+make tau2-baseline TAU2_ARGS="--model qwen/qwen3-next-80b-a3b"    # different agent model
 ```
 
-### Available prospect domains
-
-Use any of these with `DOMAIN=`:
-
-```
-delamode-group.com         conshohockenbrewing.com     whitehilltech.com
-connempathy.com            consolidatedparts.com       alliancehospice.com
-americraftmfg.com          fivestarcarting.com          comax.coop
-windowclassics.com         wiringtech.com               ameriskengineering.com
-hang.de                    cius.co.uk                   alphaballscrew.com
-alpine-collision.com       connecttv.se                 tuffgirl.com
-riverpointpgh.com          cavendishfoods.co.uk         syma-tech.de
-sycamorehillcapital.com    conseil-telecom.net          c-i-ltd.co.uk
-americanmetalroofs.com
+**Sealed eval (Act IV scoring):** requires `TAU2_SEALED_ACCESS=1` + `EVAL_TIER_ENABLED=1` in `.env`.
+```bash
+make tau2-eval                                                    # 20 tasks × 5 trials, eval tier
+make tau2-eval TAU2_TRIALS=1                                      # one-trial smoke
 ```
 
-_(Full list: `data/synthetic_prospects.json`)_
+**Direct invocation** for finer control:
+```bash
+PYTHONPATH=. .venv/bin/python -m eval.harness \
+    --partition retail_dev_30 --trials 5 --tier dev \
+    --model qwen/qwen3-next-80b-a3b --seed 42 --max-concurrency 4
+```
+
+Outputs:
+
+| File | Contents |
+|---|---|
+| [`eval/score_log.json`](eval/score_log.json) | `pass_at_1_mean`, `ci_95`, `cost_per_task_usd`, `p50/p95_latency_ms`, `langfuse_trace_url`, repro-delta vs published reference |
+| [`eval/trace_log.jsonl`](eval/trace_log.jsonl) | One row per simulation: `task_id`, `seed`, `pass`, full messages, tokens, cost, wall time |
+| stderr summary | One line: pass@1 + 95% CI + cost/task + Langfuse trace URL |
+
+**Pinning:** `tau2.pinned_sha` in [config.yaml](config.yaml) is recorded as `git_sha_tau2` on every score-log entry; drift from the working tree at `eval/tau2/` fails reproducibility checks.
+
+**Cost attribution:** prefers LiteLLM's own `completion_cost`; if LiteLLM has no rate card for the served slug (common for OpenRouter date-versioned models like `deepseek-v3.2-20251201`), falls back to [`config.yaml > llm.rate_cards`](config.yaml).
+
+### Act IV mechanism — `make tau2-ablation`
+
+Runs three conditions on the same partition. Mechanism is `dual_control_agent` ([agent/tau2_mechanism/dual_control_agent.py](agent/tau2_mechanism/dual_control_agent.py)) — a system-prompt augmentation hardening tau2 retail's existing dual-control rules into model-readable instructions. See [`method/method.md`](method/method.md) for design rationale.
+
+| Condition | Agent | Purpose |
+|---|---|---|
+| **A_baseline** | `llm_agent` | Day-1 control |
+| **B_mechanism** | `dual_control_agent` | Full mechanism (R1–R5) |
+| **C_ablation** | `dual_control_agent_lite` | R1+R2 only — isolates R3+R4+R5 contribution |
+
+```bash
+make tau2-ablation                                                                        # dev partition, 5 trials × 3 conditions
+make tau2-ablation TAU2_ABLATION_TRIALS=1                                                 # one-trial smoke
+```
+
+Direct invocation:
+```bash
+PYTHONPATH=. .venv/bin/python -m method.run_ablations \
+    --partition retail_sealed_20 --tier eval --baseline-tier dev \
+    --trials 5 --bootstrap-resamples 5000
+```
+
+Outputs (under `method/`):
+
+| File | Contents |
+|---|---|
+| `ablation_results.json` | pass@1 + 95% CI + cost-per-task + p95 latency for all three conditions; Delta A (paired-task percentile bootstrap) with 95% CI and two-sided p-value; Delta-A gate verdict; GEPA placeholder for Delta B |
+| `held_out_traces.jsonl` | Every simulation from every condition, tagged with `condition` |
+| `stat_test.md` | Bootstrap math + verdict (PASSES if Δ A > 0 ∧ p < 0.05, else DOES NOT PASS) |
 
 ### Other commands
+
 ```bash
-make tau2-baseline                        # τ²-Bench dev-slice baseline
-make probes                               # run probe library
-make probes P=P-0001                      # single probe
-make memo                                 # render 2-page memo.pdf
-make test                                 # pytest suite
-make lint                                 # ruff
-make audit                                # weekly policy audit
-make final-check                          # pre-submission gauntlet
+make probes                              # run probe library
+make probes P=P-0001                     # single probe
+make memo                                # render 2-page memo.pdf
+make test                                # pytest
+make lint                                # ruff
+make audit                               # weekly policy audit
+make final-check                         # pre-submission gauntlet
 ```
 
 ---
 
-## 7. Demo Video — Step-by-Step Script
+## 8. Deploying to Render
 
-> Follow these steps in order to record the ≤8-minute demo video. All services must be running (§1–4 above). Run `make smoke` first.
+1. Dashboard → **New** → **Web Service** → connect repo.
+2. **Build:** `pip install --upgrade pip && pip install -r agent/requirements.txt`
+3. **Start:** `uvicorn agent.server:app --host 0.0.0.0 --port $PORT`
+4. **Health Check:** `/health`
+5. **Instance:** Starter ($7/mo) — free tier sleeps and drops webhooks.
 
-### Intro (0:20)
-State what's being demoed: "The Conversion Engine — an AI sales automation system that enriches prospects from public data, composes signal-grounded outreach, and books discovery calls." Show the architecture diagram briefly.
+Env extras:
+- `HUBSPOT_USE_MCP=false` — Render's Python image has no `npx`; use REST on Render, MCP locally.
+- `TENACIOUS_OUTBOUND_ENABLED` — **leave unset** unless staff-approved.
 
-### Step 1 — Enrichment Live (1:00)
-```bash
-make enrich DOMAIN=delamode-group.com
-```
-**Show on camera:**
-- Terminal output with per-signal confidence scores
-- Langfuse trace appearing (open Langfuse dashboard)
-- `eval/briefs/delamode-group.com/hiring_signal_brief.json` contents
-- `eval/briefs/delamode-group.com/competitor_gap_brief.json` contents
-
-### Step 2 — Cold Email Compose & Send (1:00)
-```bash
-make compose-and-send DOMAIN=delamode-group.com
-```
-**Show on camera:**
-- Segment-specific email draft in output
-- Tone-check pass (scores visible)
-- `sink: True` confirming kill-switch routing
-- HubSpot dashboard: contact record populating with enrichment fields
-
-### Step 3 — Engaged Reply (1:00)
-Manually send a reply from the sink inbox with an "interested" message. **Show on camera:**
-- Webhook hits `/webhook/email` (FastAPI terminal logs)
-- Reply classifier tags it `engaged`
-- Warm response auto-composed with Cal.com booking link
-- HubSpot engagement updated to show the reply thread
-
-### Step 4 — SMS Scheduling Handoff (0:45)
-Prospect shares phone number. **Show on camera:**
-- Agent detects scheduling intent → switches to SMS channel
-- SMS confirmation routed via SMS sink (kill-switch enforced)
-- Langfuse trace shows cross-channel handoff
-
-### Step 5 — Cal.com Booking (0:45)
-**Show on camera:**
-- Slot picked from Cal.com availability
-- Booking created → `data/calcom_local/bookings.jsonl` (sink mode)
-- Context brief attached to HubSpot Deal as a NOTE
-- Open the HubSpot Deal to show the NOTE contents
-
-### Step 6 — Abstention / Honesty Path (0:30)
-```bash
-make compose-and-send DOMAIN=windowclassics.com
-```
-**Show on camera:**
-- Agent refuses to assert "aggressive hiring" when <5 open roles
-- Softer exploratory language used instead
-- Compare the language side-by-side with Step 2's output
-
-### Step 7 — Classification Nuance (0:30)
-**Show on camera:**
-- A prospect with post-layoff + funding signals
-- Classified as Segment 2 (mid-market restructure), not Segment 1
-- Langfuse trace showing the rule that fired
-
-### Step 8 — τ²-Bench Score (0:30)
-```bash
-make tau2-baseline
-```
-**Show on camera:** Harness produces a trace; pass@1 result visible.
-
-### Step 9 — Probe Walkthrough (0:45)
-```bash
-make probes P=P-0001
-```
-**Show on camera:**
-- The probe definition in `probes/probe_library.md`
-- Before/after trigger rate showing a concrete mechanism fix
-
-### Step 10 — Outro (0:20)
-State: pilot recommendation, kill-switch clause (trigger metric, threshold, rollback condition).
-
----
-
-## 8. Deploying to Render (Production)
-
-### Create the service
-1. Dashboard → **New** → **Web Service** → connect repo
-2. Settings:
-   - **Environment:** Python 3
-   - **Build:** `pip install --upgrade pip && pip install -r agent/requirements.txt`
-   - **Start:** `uvicorn agent.server:app --host 0.0.0.0 --port $PORT`
-   - **Health Check:** `/health`
-   - **Instance:** Starter ($7/mo) — free tier sleeps and drops webhooks
-
-### Environment variables
-Same as `.env`, plus:
-- `HUBSPOT_USE_MCP=false` — Render's Python image has no `npx`; use REST mode on Render, MCP locally
-- `TENACIOUS_OUTBOUND_ENABLED` — **leave unset** unless staff-approved
-
-### Point webhooks at Render
 Replace ngrok URLs with `https://<service>.onrender.com/webhook/{email,sms,cal}` at each provider.
 
 ---
@@ -304,7 +216,6 @@ Replace ngrok URLs with `https://<service>.onrender.com/webhook/{email,sms,cal}`
 ```bash
 # Terminal C: Ctrl-C FastAPI
 # Terminal B: Ctrl-C tunnel
-# Terminal A:
 docker compose -f infra/docker-compose.yml down
 # HubSpot MCP dies with its Python parent — nothing to stop.
 ```
@@ -313,20 +224,19 @@ docker compose -f infra/docker-compose.yml down
 
 ## Troubleshooting
 
-### Cal.com "table public.App does not exist"
+**Cal.com "table public.App does not exist"**
 ```bash
-# Force fresh start
 docker compose -f infra/docker-compose.yml down -v
 docker compose -f infra/docker-compose.yml up -d
-```
-If that fails, run migrations manually:
-```bash
+# If still failing:
 docker compose -f infra/docker-compose.yml run --rm --entrypoint "" \
-  calcom sh -c "cd /calcom && yarn workspace @calcom/prisma db-deploy"
+    calcom sh -c "cd /calcom && yarn workspace @calcom/prisma db-deploy"
 ```
 
-### `make compose-and-send` fails with "not in synthetic_prospects.json"
-The `DOMAIN=` value must match a `company_domain` in `data/synthetic_prospects.json`. See the domain list in §6 above.
+**`make compose-and-send` fails with "not in synthetic_prospects.json"** — `DOMAIN=` must match a `company_domain` in [`data/synthetic_prospects.json`](data/synthetic_prospects.json).
 
-### HubSpot MCP fails to start
-Check `node --version` (needs v18+). See [`infra/hubspot_mcp.md`](infra/hubspot_mcp.md) for details. Do **not** set `HUBSPOT_USE_MCP=false` locally — that demotes to REST and fails `make final-check`.
+**HubSpot MCP fails to start** — check `node --version` (≥ v18). See [`infra/hubspot_mcp.md`](infra/hubspot_mcp.md). Don't set `HUBSPOT_USE_MCP=false` locally — that demotes to REST and fails `make final-check`.
+
+**τ²-Bench LiteLLM `model isn't mapped yet`** — silenced by [`eval/harness.py`](eval/harness.py)'s startup hook; cost falls back to [`config.yaml > llm.rate_cards`](config.yaml). Add a rate-card entry there if a new model shows `cost_total_usd: 0.0` in the score log.
+
+**τ²-Bench task fails with `Expecting value: line 1 column 1 (char 0)`** — dev-tier model returned non-JSON for a tool call or NL-assertion judge. Harness's tolerant-JSON shim handles empty / markdown-fenced / prose-wrapped cases at both call sites; if you still see this on a new tau2 module, extend `_tolerate_empty_tool_call_args` in [`eval/harness.py`](eval/harness.py).

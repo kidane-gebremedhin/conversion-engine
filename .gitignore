@@ -22,11 +22,7 @@ htmlcov/
 # Node
 node_modules/
 
-# Runs, briefs, traces (reproducible from code + data)
-eval/runs/
-eval/briefs/
 eval/tau2/
-method/held_out_traces.jsonl
 
 # Sealed held-out partition — MUST live outside the tree
 tau2_sealed_heldout/
